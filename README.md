@@ -1,9 +1,14 @@
-[![Build Status](https://travis-ci.org/daviskirk/climatecontrol.svg?branch=master)](https://travis-ci.org/daviskirk/climatecontrol)
+[![Build Status](https://travis-ci.org/daviskirk/climatecontrol.svg?branch=master)](https://travis-ci.org/daviskirk/climatecontrol) [![Coverage Status](https://coveralls.io/repos/github/daviskirk/climatecontrol/badge.svg?branch=master)](https://coveralls.io/github/daviskirk/climatecontrol?branch=master)
 
 # CLIMATECONTROL
 
 Python library for loading app configurations from files and/or namespaced
 environment variables.
+
+## Install
+```
+pip install git+https://github.com/daviskirk/climatecontrol.git
+```
 
 ## Usage
 
@@ -25,6 +30,6 @@ print(dict(settings_map))
 
 The output should look something like this:
 
-```json
+```
 {'section1': {'subsection1': 'test1'}, 'section2': {'subsection2': 'test2', 'subsection3': 'test3'}}
 ```
