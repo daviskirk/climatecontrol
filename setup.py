@@ -62,13 +62,13 @@ class Typecheck(Command):
 
 setup(
     name='climatecontrol',
-    version='0.1.1',
+    version='0.1.2',
     description="Python library for loading app configurations from files and/or namespaced environment variables",
     long_description=read('README.rst'),
     author="Davis Kirkendall",
     author_email='davis.e.kirkendall@gmail.com',
     url='https://github.com/daviskirk/climatecontrol',
-    download_url='https://github.com/daviskirk/climatecontrol/tarball/0.1.1',
+    download_url='https://github.com/daviskirk/climatecontrol/tarball/0.1.2',
     packages=[
         'climatecontrol',
     ],

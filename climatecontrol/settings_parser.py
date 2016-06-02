@@ -174,11 +174,18 @@ def parse_env_vars(env_prefix: Optional[str] = None,
         for nk in nested_keys[:-1]:
             u[nk] = {}
             u = u[nk]
-        value = os.environ[env_var]
-        u[nested_keys[-1]] = value
+        u[nested_keys[-1]] = get_env_var_value(env_var)
         logger.info('Getting settings from env var: {}'.format(env_var))
         update_nested(settings_map, update)
     return settings_map
+
+
+def get_env_var_value(env_var: str) -> Any:
+    v = os.environ[env_var]
+    try:
+        return toml.load_value(v)[0]
+    except (ValueError, TypeError):
+        return v
 
 
 def update_nested(d: Dict, u: Mapping) -> Dict:

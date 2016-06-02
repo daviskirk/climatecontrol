@@ -26,6 +26,17 @@ def mock_os_environ(monkeypatch):
 
 
 @pytest.fixture
+def mock_os_environ_toml(monkeypatch):
+    mock_environ = {
+        'TEST_STUFF_TESTGROUP_TEST_INT': '6',
+        'TEST_STUFF_TESTGROUP_TEST_ARRAY': '[4, 5, 6]',
+        'TEST_STUFF_TESTGROUP_TEST_RAW_STR': 'al//asdjk',
+        'TEST_STUFF_TESTGROUP_TEST_STR': '"[4, 5, 6]"',
+    }
+    monkeypatch.setattr(os, 'environ', mock_environ)
+
+
+@pytest.fixture
 def mock_empty_os_environ(monkeypatch):
     mock_environ = {}
     monkeypatch.setattr(os, 'environ', mock_environ)
@@ -123,6 +134,18 @@ def test_settings_file_and_env_file_and_env(mock_env_settings_file, tmpdir):
         }
     }
 
+
+def test_parse_env_vars_toml(mock_os_environ_toml):
+    result = settings_parser.parse_env_vars('TEST_STUFF', max_depth=1)
+    expected = {
+        'testgroup': {
+            'test_int': 6,
+            'test_array': [4, 5, 6],
+            'test_raw_str': 'al//asdjk',
+            'test_str': '[4, 5, 6]',
+        }
+    }
+    assert result == expected
 
 if __name__ == '__main__':
     sys.exit()
