@@ -147,5 +147,66 @@ def test_parse_env_vars_toml(mock_os_environ_toml):
     }
     assert result == expected
 
+
+def mock_parser_fcn(s):
+    return s
+
+
+@pytest.mark.parametrize('attr, value, expected', [
+    ('env_prefix', 'that', 'THAT'),
+    ('settings_file_env_suffix', 'suffix2', 'suffix2'),
+    ('settings_file_env_var', 'wrongval', None),
+    ('parser', mock_parser_fcn, mock_parser_fcn)
+])
+def test_assign(mock_empty_os_environ, attr, value, expected):
+    s = settings_parser.Settings(env_prefix='this', settings_file_env_suffix='suffix', parser=None)
+    assert s.env_prefix == 'THIS'
+    assert s.settings_file_env_suffix == 'suffix'
+    assert s.settings_file_env_var == 'THIS_SUFFIX'
+
+    if attr == 'settings_file_env_var':
+        with pytest.raises(AttributeError):
+            setattr(s, attr, value)
+    else:
+        setattr(s, attr, value)
+        assert getattr(s, attr) == expected
+        if attr == 'settings_file_env_suffix':
+            assert s.settings_file_env_var == 'THIS_' + expected.upper()
+
+
+@pytest.mark.parametrize('mode', [
+    'dict', 'envvar', 'both'
+])
+def test_update(mock_empty_os_environ, mode):
+    """Test if updating settings after initialization works"""
+    os.environ['THIS_SECTION_MY_VALUE'] = 'original'
+    s = settings_parser.Settings(env_prefix='this', settings_file_env_suffix='suffix', parser=None)
+    original = dict(s)
+    assert original == {'section': {'my_value': 'original'}}
+
+    expected = original.copy()
+    if mode in ['dict', 'both']:
+        update = {'section': {'my_new_value': 'value'}}
+        expected['section'].update({'my_new_value': 'value'})
+    else:
+        update = None
+    if mode in ['envvar', 'both']:
+        os.environ['THIS_SECTION2_NEW_ENV_VALUE'] = 'new_env_data'
+        expected.update({'section2': {'new_env_value': 'new_env_data'}})
+    s.update(update)
+    assert dict(s) == expected
+
+
+def test_filters(mock_empty_os_environ):
+    """test filter functionality based on docstring example"""
+    os.environ.update(dict(
+        MY_APP_SECTION1_SUBSECTION1='test1',
+        MY_APP_SECTION2_SUBSECTION2='test2',
+        MY_APP_SECTION2_SUBSECTION3='test3',
+        MY_APP_SECTION3='not_captured',
+    ))
+    settings_map = settings_parser.Settings(env_prefix='MY_APP', filters=['section1', {'section2': '*'}])
+    # assert dict(settings_map) == {'subsection1': 'test1'}, 'section2': {'subsection2': 'test2', 'subsection3': 'test3'}}
+
 if __name__ == '__main__':
     sys.exit()

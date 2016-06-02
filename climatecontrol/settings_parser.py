@@ -58,28 +58,103 @@ class Settings(MappingABC):
             >>> os.environ['MY_APP_SECTION1_SUBSECTION1'] = 'test1'
             >>> os.environ['MY_APP_SECTION2_SUBSECTION2'] = 'test2'
             >>> os.environ['MY_APP_SECTION2_SUBSECTION3'] = 'test3'
-            >>> os.environ['MY_APP_SECTION3'] = 'not_captured'
-            >>> settings_map = Settings(env_prefix='MY_APP', filters={'section1': 'subsection1', 'section2': None})
+            >>> settings_map = Settings(env_prefix='MY_APP')
             >>> dict(settings_map)
-            ... {'section1': {'subsection1': 'test1'}, 'section2': {'subsection2': 'test2', 'subsection3': 'test3'}}
+            {'section1': {'subsection1': 'test1'}, 'section2': {'subsection2': 'test2', 'subsection3': 'test3'}}
+
+            Using filters we can conveniently promote a specific sections to the top level namespace
+
+            >>> dict(Settings(env_prefix='MY_APP', filters='section1'))
+            {'subsection1': 'test1'}
+
+            Or gather multiple sections into the same namespace (sometimes dangerous if the subsections are not unique)
+
+            >>> dict(Settings(env_prefix='MY_APP', filters=['section1', 'section2']))
+            {'subsection1': 'test1', 'subsection2': 'test2', 'subsection3': 'test3'}
 
         """
         if parser and not callable(parser):
             raise TypeError('If given, ``parser`` must be a callable')
         self._parse = parser
         self.filters = filters
-        self.env_prefix = build_env_var(env_prefix)
+        self.env_prefix = env_prefix
         self.settings_file_env_suffix = settings_file_env_suffix
-        self.settings_file_env_var = build_env_var(self.env_prefix, self.settings_file_env_suffix)
-        self.settings_file = settings_file or os.environ.get(self.settings_file_env_var)
-        self._data = self.build_settings_map()
+        self.settings_file = settings_file
+        self.external_data = {}
+        self.update()
 
-    def build_settings_map(self):
+    @property
+    def env_prefix(self) -> str:
+        return self._env_prefix
+
+    @env_prefix.setter
+    def env_prefix(self, value: str):
+        self._env_prefix = build_env_var(value)
+
+    @property
+    def settings_file_env_suffix(self) -> str:
+        return self._settings_file_env_suffix
+
+    @settings_file_env_suffix.setter
+    def settings_file_env_suffix(self, value: str):
+        self._settings_file_env_suffix = value
+        self._settings_file_env_var = build_env_var(self.env_prefix, value)
+
+    @property
+    def settings_file_env_var(self) -> str:
+        return self._settings_file_env_var
+
+    @settings_file_env_var.setter
+    def settings_file_env_var(self, value: str):
+        raise AttributeError('Can\'t set `settings_file_env_var` directly. Set `settings_file_env_suffix` instead.')
+
+    @property
+    def settings_file(self):
+        return self._settings_file
+
+    @settings_file.setter
+    def settings_file(self, value: str):
+        self._settings_file = value or os.environ.get(self.settings_file_env_var)
+
+    @property
+    def parser(self):
+        return self._parse
+
+    @parser.setter
+    def parser(self, value: Optional[Callable]):
+        if value and not callable(value):
+            raise TypeError('If given, ``parser`` must be a callable')
+        self._parse = value
+
+    def update(self, d: Optional[Mapping] = None) -> None:
+        """Updates object settings and reload files and environment variables.
+
+        Args:
+            d: Updates for settings. This is equivilant to `dict.update` except
+                that the update is recursive for nested dictionaries.
+
+        Example:
+            >>> import os
+            >>> os.environ['MY_APP_SECTION_VALUE'] = 'test'
+            >>> settings = Settings(env_prefix='MY_APP')
+            >>> dict(settings)
+            {'section': {'value': 'test'}}
+            >>>
+            >>> # now update the settings
+            >>> os.environ['MY_APP_SECTION2_NEW_ENV_VALUE'] = 'new_env_data'
+            >>> settings.update({'section': {'new_value': 'new'}})
+            >>> dict(settings)
+            {'section': {'value': 'test', 'new_value': 'new'}, 'section2': {'new_env_value': 'new_env_data'}}
+
+        """
         settings_map = {}  # type: dict
         update_nested(settings_map, self.parse_env_vars())
         update_nested(settings_map, self.read_file())
+        if d:
+            update_nested(self.external_data, d)
+            update_nested(settings_map, self.external_data)
         settings_map = self.subtree(settings_map)
-        return self.parse(settings_map)
+        self._data = self.parse(settings_map)
 
     def parse(self, data):
         if self._parse:
@@ -184,7 +259,7 @@ def get_env_var_value(env_var: str) -> Any:
     v = os.environ[env_var]
     try:
         return toml.load_value(v)[0]
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, IndexError):
         return v
 
 

@@ -4,8 +4,9 @@
 CLIMATECONTROL
 ==============
 
-Python library for loading app configurations from files and/or
-namespaced environment variables.
+CLIMATECONTROL controls your apps configuration environment. It is a Python
+library for loading app configurations from files and/or namespaced environment
+variables.
 
 
 Install
@@ -26,21 +27,24 @@ Set some environment variables in your shell
     MY_APP_SECTION1_SUBSECTION1=test1
     MY_APP_SECTION2_SUBSECTION2=test2
     MY_APP_SECTION2_SUBSECTION3=test3
-    MY_APP_SECTION3=not_captured
 
 Then use them in your python modules:
 
-.. code:: python
+>>> from climatecontrol.settings_parser import Settings
+>>> settings_map = Settings(env_prefix='MY_APP')
+>>> dict(settings_map)
+{'section1': {'subsection1': 'test1'}, 'section2': {'subsection2': 'test2', 'subsection3': 'test3'}}
+>>>
 
-    from climatecontrol.settings_parser import Settings
-    settings_map = Settings(env_prefix='MY_APP', filters={'section1': 'subsection1', 'section2': None})
-    print(dict(settings_map))
+In case you want to update your settings or your environment variables have
+changed and you want to reload them, the `update` method will reload your
+settings:
 
-The output should look something like this:
-
-::
-
-    {'section1': {'subsection1': 'test1'}, 'section2': {'subsection2': 'test2', 'subsection3': 'test3'}}
+>>> import os
+>>> os.environ['MY_APP_SECTION2_NEW_ENV_VAR'] = 'new_env_data'
+>>> settings_map.update()
+{'section2': {'subsection3': 'test3', 'subsection2': 'test2', 'new_env_var': 'new_env_data'}, 'section1': {'subsection1': 'test1'}}
+>>>
 
 
 .. |Build Status| image:: https://travis-ci.org/daviskirk/climatecontrol.svg?branch=master
