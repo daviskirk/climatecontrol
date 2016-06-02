@@ -80,7 +80,7 @@ class Settings(MappingABC):
         self.env_prefix = env_prefix
         self.settings_file_env_suffix = settings_file_env_suffix
         self.settings_file = settings_file
-        self.external_data = {}
+        self.external_data = {}  # type: Dict
         self.update()
 
     @property
@@ -126,7 +126,7 @@ class Settings(MappingABC):
             raise TypeError('If given, ``parser`` must be a callable')
         self._parse = value
 
-    def update(self, d: Optional[Mapping] = None) -> None:
+    def update(self, d: Optional[Union[Mapping, Dict]] = None) -> None:
         """Updates object settings and reload files and environment variables.
 
         Args:
@@ -147,7 +147,7 @@ class Settings(MappingABC):
             {'section': {'value': 'test', 'new_value': 'new'}, 'section2': {'new_env_value': 'new_env_data'}}
 
         """
-        settings_map = {}  # type: dict
+        settings_map = {}  # type: Dict
         update_nested(settings_map, self.parse_env_vars())
         update_nested(settings_map, self.read_file())
         if d:
@@ -196,7 +196,7 @@ class Settings(MappingABC):
     def parse_env_vars(self) -> Mapping:
         return parse_env_vars(self.env_prefix, exclude=(self.settings_file_env_var,))
 
-    def subtree(self, data: Mapping) -> Mapping:
+    def subtree(self, data: Dict) -> Dict:
         return subtree(data, self.filters, parent_hierarchy=['settings'])
 
 
@@ -274,7 +274,7 @@ def update_nested(d: Dict, u: Mapping) -> Dict:
     return d
 
 
-def subtree(data: Mapping,
+def subtree(data: Union[Dict, Mapping],
             filters: Optional[Union[str, Mapping, Iterable]] = None,
             parent_hierarchy: Iterable = ()) -> Any:
     if not parent_hierarchy:
