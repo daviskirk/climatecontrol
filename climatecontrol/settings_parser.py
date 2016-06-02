@@ -14,6 +14,10 @@ from copy import deepcopy
 logger = logging.getLogger(__name__)
 
 
+class SettingsValidationError(ValueError):
+    pass
+
+
 class SettingsFileError(ValueError):
     pass
 

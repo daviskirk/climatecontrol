@@ -10,7 +10,8 @@ from setuptools import setup
 from setuptools import Command
 
 requirements = [
-    'toml', 'typing'
+    'toml',
+    'typing'
 ]
 
 test_requirements = [
