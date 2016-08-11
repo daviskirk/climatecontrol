@@ -106,6 +106,28 @@ def test_settings_parse(mock_os_environ):
     assert dict(settings_map) == expected
 
 
+@pytest.mark.parametrize('settings_file', ['asd;kjhaflkjhasf', '.', '/home/'])
+def test_settings_file_fail(mock_empty_os_environ, settings_file):
+    settings_map = settings_parser.Settings(
+        env_prefix='TEST_STUFF',
+        settings_file='asdlijasdlkjaa')
+    assert isinstance(settings_map, Mapping)
+    assert settings_map == {}
+
+
+def test_settings_file_file(mock_empty_os_environ, mock_settings_file, tmpdir):
+    settings_map = settings_parser.Settings(
+        env_prefix='TEST_STUFF',
+        settings_file=mock_settings_file)
+    assert isinstance(settings_map, Mapping)
+    assert dict(settings_map) == {
+        'testgroup': {
+            'testvar': 123
+        }, 'othergroup': {
+            'blabla': 555
+        }
+    }
+
 def test_settings_file_and_env_file(mock_os_environ, mock_settings_file, tmpdir):
     settings_map = settings_parser.Settings(
         env_prefix='TEST_STUFF',

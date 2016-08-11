@@ -39,9 +39,11 @@ class Settings(MappingABC):
         """A Settings instance allows settings to be loaded from a settings file or
         environment variables.
 
-        args:
+        Attributes:
             settings_file: If set, is used as a path to a settings file (toml
-                format) from which all settings are loaded
+                format) from which all settings are loaded. This file will take
+                precedence over the environment variables and settings file set
+                with environment variables.
             env_prefix: Environment variables which start with this prefix will
                 be parsed as settings.
             settings_file_env_suffix: The combination out of this suffix and
@@ -58,7 +60,14 @@ class Settings(MappingABC):
                 nested dictionary argument (the settings map) as an argument
                 and output a nested dictionary.
 
-        examples:
+        Args:
+            settings_file: See attribute
+            env_prefix: See attribute
+            settings_file_env_suffix: See attribute
+            filters: See attribute
+            parser: See attribute
+
+        Example:
             >>> import os
             >>> os.environ['MY_APP_SECTION1_SUBSECTION1'] = 'test1'
             >>> os.environ['MY_APP_SECTION2_SUBSECTION2'] = 'test2'
@@ -185,15 +194,15 @@ class Settings(MappingABC):
         for k in self._data:
             yield k
 
-    def _read_file(self) -> Mapping:
+    def _read_file(self) -> Dict[str, Any]:
+        file_data = {}  # type: Dict
         if self.settings_file:
             if os.path.isfile(self.settings_file):
                 with open(self.settings_file) as f:
-                    return toml.load(f)
+                    file_data = toml.load(f)
             elif self.settings_file.lstrip().startswith('['):
-                return toml.loads(self.settings_file)
-        else:
-            return {}
+                file_data = toml.loads(self.settings_file)
+        return file_data
 
     def read_file(self) -> Mapping:
         return self._read_file()
