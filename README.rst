@@ -24,9 +24,9 @@ Set some environment variables in your shell
 
 .. code:: sh
 
-   MY_APP_SECTION1_SUBSECTION1=test1
-   MY_APP_SECTION2_SUBSECTION2=test2
-   MY_APP_SECTION2_SUBSECTION3=test3
+   export MY_APP_SECTION1_SUBSECTION1=test1
+   export MY_APP_SECTION2_SUBSECTION2=test2
+   export MY_APP_SECTION2_SUBSECTION3=test3
 
 Then use them in your python modules:
 
@@ -63,12 +63,65 @@ settings:
        },
        'section2': {
            'subsection2': 'test2',
-           'subsection3': 'test3'
+           'subsection3': 'test3',
+           'new_env_var': 'new_env_data'
        }
    }
+
+
+Settings file support
+---------------------
+
+If you don't want to use an environment variable for every single setting and
+want to put your settings in a single file instead you can to this as well.
+Settings files need to be in toml_ format right now.
+
+.. code:: sh
+
+   export MY_APP_SETTINGS_FILE=./my_settings_file.toml
+
+
+The file could look like this:
+
+.. code::
+
+   [section1]
+   subsection1 = "test1"
+
+   [section2]
+   subsection2 = "test2"
+   subsection3 = "test3"
+
+
+Command line support using click
+--------------------------------
+
+The click_ library is a great tool for creating command line applications. If
+you don't want to have to use an environment to set your configuration file.
+Write your command line application like this:
+
+.. code:: python
+
+   import click
+
+   @click.command()
+   @settings_map.click_settings_file_option()
+   def cli():
+      print(dict(settings_parser))
+
+save it to a file like "cli.py" and then call it after installing click:
+
+.. code:: sh
+
+   pip install click
+   python cli.py --settings ./my_settings_file.toml
+
+whithout needing to set any env vars.
 
 
 .. |Build Status| image:: https://travis-ci.org/daviskirk/climatecontrol.svg?branch=master
    :target: https://travis-ci.org/daviskirk/climatecontrol
 .. |Coverage Status| image:: https://coveralls.io/repos/github/daviskirk/climatecontrol/badge.svg?branch=master
    :target: https://coveralls.io/github/daviskirk/climatecontrol?branch=master
+.. _click: http://click.pocoo.org/
+.. _toml: https://github.com/toml-lang/toml
