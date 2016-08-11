@@ -10,7 +10,9 @@ import pytest
 from collections.abc import Mapping
 from unittest.mock import MagicMock
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from climatecontrol import settings_parser
+from climatecontrol import settings_parser, cli_utils
+import click
+from click.testing import CliRunner
 
 
 @pytest.fixture
@@ -48,7 +50,7 @@ def mock_settings_env_prefix(monkeypatch):
 
 
 @pytest.fixture
-def mock_settings_file(monkeypatch, tmpdir, mock_os_environ):
+def mock_settings_file(monkeypatch, tmpdir):
     p = tmpdir.mkdir('sub').join('settings.toml')
     s = """
     [testgroup]
@@ -62,7 +64,7 @@ def mock_settings_file(monkeypatch, tmpdir, mock_os_environ):
 
 
 @pytest.fixture
-def mock_env_settings_file(mock_settings_file):
+def mock_env_settings_file(mock_os_environ, mock_settings_file):
     os.environ['TEST_STUFF_SETTINGS_FILE'] = mock_settings_file
     return mock_settings_file
 
@@ -104,7 +106,7 @@ def test_settings_parse(mock_os_environ):
     assert dict(settings_map) == expected
 
 
-def test_settings_file_and_env_file(mock_settings_file, tmpdir):
+def test_settings_file_and_env_file(mock_os_environ, mock_settings_file, tmpdir):
     settings_map = settings_parser.Settings(
         env_prefix='TEST_STUFF',
         settings_file=mock_settings_file)
@@ -208,5 +210,49 @@ def test_filters(mock_empty_os_environ):
     settings_map = settings_parser.Settings(env_prefix='MY_APP', filters=['section1', {'section2': '*'}])
     # assert dict(settings_map) == {'subsection1': 'test1'}, 'section2': {'subsection2': 'test2', 'subsection3': 'test3'}}
 
-if __name__ == '__main__':
-    sys.exit()
+
+@pytest.mark.parametrize('use_method', [True, False])
+@pytest.mark.parametrize('option_name', ['config', 'settings'])
+@pytest.mark.parametrize('mode', ['config', 'noconfig', 'wrongfile', 'noclick'])
+def test_cli_utils1(mock_empty_os_environ, mock_settings_file, mode, option_name, use_method):
+    settings_map = settings_parser.Settings(
+        env_prefix='TEST_STUFF')
+    assert settings_map._data == {}
+
+    if use_method:
+        opt = cli_utils.click_settings_file_option(settings_map, option_name=option_name)
+    else:
+        opt = settings_map.click_settings_file_option(option_name=option_name)
+
+    @click.command()
+    @opt
+    def tmp_cli():
+        pass
+
+    runner = CliRunner()
+    if mode == 'config':
+        args = ['--' + option_name, mock_settings_file]
+        result = runner.invoke(tmp_cli, args)
+        expected = {
+            'testgroup': {
+                'testvar': 123
+            }, 'othergroup': {
+                'blabla': 555
+            }
+        }
+        assert dict(settings_map) == expected
+        assert result.exit_code == 0
+    elif mode == 'noconfig':
+        args = []
+        result = runner.invoke(tmp_cli, args)
+        assert dict(settings_map) == {}
+        assert result.exit_code == 0
+    elif 'wrongfile':
+        args = ['--' + option_name, 'badlfkjasfkj']
+        result = runner.invoke(tmp_cli, args)
+        assert result.exit_code == 2
+        assert result.output == (
+            'Usage: tmp_cli [OPTIONS]\n\n'
+            'Error: Invalid value for "--{}": '
+            'Path "badlfkjasfkj" does not exist.'
+            '\n').format(option_name)

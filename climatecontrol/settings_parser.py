@@ -6,7 +6,12 @@ Settings parser.
 
 import os
 import toml
+try:
+    import click
+except ImportError:
+    click = None
 from collections.abc import Mapping as MappingABC
+from functools import wraps
 from typing import Optional, Iterable, List, Union, Any, Callable, Mapping, Dict
 from . import logtools
 import logging
@@ -199,6 +204,11 @@ class Settings(MappingABC):
     def subtree(self, data: Dict) -> Dict:
         return subtree(data, self.filters, parent_hierarchy=['settings'])
 
+    def click_settings_file_option(self, **kw) -> Callable:
+        """See `cli_utils.click_settings_file_option`"""
+        from . import cli_utils
+        return cli_utils.click_settings_file_option(self, **kw)
+
 
 def build_env_var(*parts: str, split_char='_') -> str:
     return '_'.join(p.strip(split_char).upper() for p in parts)
@@ -258,7 +268,7 @@ def parse_env_vars(env_prefix: Optional[str] = None,
 def get_env_var_value(env_var: str) -> Any:
     v = os.environ[env_var]
     try:
-        return toml.load_value(v)[0]
+        return toml._load_value(v)[0]
     except (ValueError, TypeError, IndexError):
         return v
 

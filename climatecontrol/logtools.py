@@ -11,25 +11,26 @@ import logging.config as logging_config
 from functools import wraps
 from copy import deepcopy
 import time
-from typing import Optional
+from typing import Optional, Any, Callable, Dict
 
-
-logging.Formatter.converter = time.gmtime
+formatter = logging.Formatter  # type: Any
+formatter.converter = time.gmtime
 logger = logging.getLogger(__name__)  # type: logging.Logger
 
 
-def log_exception(logger):
+def log_exception(logger: logging.Logger) -> Callable:
     def log_exception_decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
             try:
                 return f(*args, **kwargs)
-            except Exception as e:
-                logger.exception(e)
+            except Exception:
+                logger.exception('An error occurred:')
                 raise
 
         return wrapper
     return log_exception_decorator
+
 
 DEFAULT_LOG_SETTINGS = {
     'version': 1,
@@ -64,7 +65,7 @@ DEFAULT_LOG_SETTINGS = {
 def setup_logging(settings_file: Optional[str] = None,
                   env_prefix: str = 'APP_SETTINGS',
                   settings_file_env_suffix: str = 'SETTINGS_FILE',
-                  logging_section: str = 'LOGGING'):
+                  logging_section: str = 'LOGGING') -> None:
     """
 
     args:
@@ -78,7 +79,7 @@ def setup_logging(settings_file: Optional[str] = None,
 
     using_custom = False
 
-    def parse(data):
+    def parse(data: Dict) -> Dict:
         """Parse logging configuration data"""
         default_settings = deepcopy(DEFAULT_LOG_SETTINGS)
         logging_settings = data.get(logging_section.lower(), {})

@@ -10,11 +10,12 @@ from setuptools import setup
 from setuptools import Command
 
 requirements = [
-    'toml',
+    'toml>=0.9.2',
     'typing'
 ]
 
 test_requirements = [
+    'click',
     'pytest-mock',
     'pytest-cov',
     'pytest'
@@ -62,13 +63,12 @@ class Typecheck(Command):
 
 setup(
     name='climatecontrol',
-    version='0.1.4',
+    use_scm_version=True,
     description="Python library for loading app configurations from files and/or namespaced environment variables",
     long_description=read('README.rst'),
     author="Davis Kirkendall",
     author_email='davis.e.kirkendall@gmail.com',
     url='https://github.com/daviskirk/climatecontrol',
-    download_url='https://github.com/daviskirk/climatecontrol/tarball/0.1.4',
     packages=[
         'climatecontrol',
     ],
@@ -86,7 +86,7 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.5',
     ],
-    setup_requires=['pytest-runner'],
+    setup_requires=['pytest-runner', 'setuptools_scm'],
     tests_require=test_requirements,
     cmdclass={'typecheck': Typecheck},
 )
