@@ -35,7 +35,8 @@ class Settings(MappingABC):
                  env_prefix: str = 'APP_SETTINGS',
                  settings_file_env_suffix: str = 'SETTINGS_FILE',
                  filters: Optional[Union[str, Iterable, Mapping]] = None,
-                 parser: Optional[Callable] = None) -> None:
+                 parser: Optional[Callable] = None,
+                 update_on_init: bool = True) -> None:
         """A Settings instance allows settings to be loaded from a settings file or
         environment variables.
 
@@ -59,6 +60,9 @@ class Settings(MappingABC):
                 result of the settings. The function should take a single
                 nested dictionary argument (the settings map) as an argument
                 and output a nested dictionary.
+            update_on_init: If set to `False` no parsing is performed upon
+                initialization of the object. You will need to call update
+                manually if you want load use any settings.
 
         Args:
             settings_file: See attribute
@@ -95,7 +99,9 @@ class Settings(MappingABC):
         self.settings_file_env_suffix = settings_file_env_suffix
         self.settings_file = settings_file
         self.external_data = {}  # type: Dict
-        self.update()
+        self._data = {}  # type: Dict
+        if update_on_init:
+            self.update()
 
     @property
     def env_prefix(self) -> str:
@@ -200,15 +206,22 @@ class Settings(MappingABC):
             if os.path.isfile(self.settings_file):
                 with open(self.settings_file) as f:
                     file_data = toml.load(f)
+                logger.debug('Loaded settings data from file {}'.format(self.settings_file))
             elif self.settings_file.lstrip().startswith('['):
                 file_data = toml.loads(self.settings_file)
+                logger.debug('Loaded settings from string found in settings file env var')
+            else:
+                logger.debug('No settings file data loaded!')
         return file_data
 
     def read_file(self) -> Mapping:
         return self._read_file()
 
     def parse_env_vars(self) -> Mapping:
-        return parse_env_vars(self.env_prefix, exclude=(self.settings_file_env_var,))
+        env_var_data = parse_env_vars(self.env_prefix, exclude=(self.settings_file_env_var,))
+        if not env_var_data:
+            logger.debug('No settings found in environment vars!')
+        return env_var_data
 
     def subtree(self, data: Dict) -> Dict:
         return subtree(data, self.filters, parent_hierarchy=['settings'])

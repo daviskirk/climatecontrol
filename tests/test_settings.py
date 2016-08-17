@@ -90,10 +90,20 @@ def test_settings_empty(mock_empty_os_environ):
     assert dict(settings_map) == {}
 
 
-def test_settings(mock_os_environ):
-    settings_map = settings_parser.Settings(env_prefix='TEST_STUFF')
+@pytest.mark.parametrize('update_on_init', [False, True, None])
+def test_settings(mock_os_environ, update_on_init):
+    kwargs = {'env_prefix': 'TEST_STUFF'}
+    if update_on_init is None:
+        pass
+    else:
+        kwargs['update_on_init'] = update_on_init
+    settings_map = settings_parser.Settings(**kwargs)
     assert isinstance(settings_map, Mapping)
-    assert dict(settings_map) == {'testgroup': {'testvar': 7, 'test_var': 6}}
+    if update_on_init is False:
+        expected = {}
+    else:
+        expected = {'testgroup': {'testvar': 7, 'test_var': 6}}
+    assert dict(settings_map) == expected
 
 
 def test_settings_parse(mock_os_environ):

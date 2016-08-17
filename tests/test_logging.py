@@ -25,7 +25,6 @@ def test_logging(monkeypatch, tmpdir):
         logtools.setup_logging()
         logger.info('test after')
         logging_output = buf.getvalue()
-        assert logging_output[:12] == 'test before\n'
         assert 'UTC [WARNING] climatecontrol.logtools: Custom log settings not found.  Using defaults.\n' in logging_output
         assert 'UTC [INFO] test_logging_logger: test after\n' in logging_output
 
