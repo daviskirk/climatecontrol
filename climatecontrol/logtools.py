@@ -18,16 +18,16 @@ formatter.converter = time.gmtime
 logger = logging.getLogger(__name__)  # type: logging.Logger
 
 
-def log_exception(logger: logging.Logger) -> Callable:
+def log_exception(logger: logging.Logger, message='An unexpected error occurred!', reraise=True) -> Callable:
     def log_exception_decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
             try:
                 return f(*args, **kwargs)
             except Exception:
-                logger.exception('An error occurred:')
-                raise
-
+                logger.exception(message)
+                if reraise:
+                    raise
         return wrapper
     return log_exception_decorator
 
@@ -45,15 +45,7 @@ DEFAULT_LOG_SETTINGS = {
             'class': 'logging.StreamHandler',
             'formatter': 'default',
             'level': 'DEBUG'
-        },
-        'file': {
-            'class': 'logging.handlers.RotatingFileHandler',
-            'maxBytes': 104857600,
-            'filename': 'athion.log',
-            'backupCount': 3,
-            'formatter': 'default',
-            'level': 'DEBUG'
-        },
+        }
     },
     'root': {
         'level': 'INFO',
@@ -66,7 +58,7 @@ def setup_logging(settings_file: Optional[str] = None,
                   env_prefix: str = 'APP_SETTINGS',
                   settings_file_env_suffix: str = 'SETTINGS_FILE',
                   logging_section: str = 'LOGGING') -> None:
-    """
+    """Configure logging
 
     args:
         settings_file: pass to `settings_parser.Settings`

@@ -34,6 +34,7 @@ def mock_os_environ_toml(monkeypatch):
         'TEST_STUFF_TESTGROUP_TEST_ARRAY': '[4, 5, 6]',
         'TEST_STUFF_TESTGROUP_TEST_RAW_STR': 'al//asdjk',
         'TEST_STUFF_TESTGROUP_TEST_STR': '"[4, 5, 6]"',
+        'TEST_STUFF_TESTGROUP_TEST_AMQP': 'amqp://guest:guest@127.0.0.1:5672//'
     }
     monkeypatch.setattr(os, 'environ', mock_environ)
 
@@ -177,6 +178,7 @@ def test_parse_env_vars_toml(mock_os_environ_toml):
             'test_array': [4, 5, 6],
             'test_raw_str': 'al//asdjk',
             'test_str': '[4, 5, 6]',
+            'test_amqp': 'amqp://guest:guest@127.0.0.1:5672//',
         }
     }
     assert result == expected

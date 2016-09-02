@@ -29,7 +29,6 @@ class SettingsFileError(ValueError):
 
 class Settings(MappingABC):
 
-    @logtools.log_exception(logger)
     def __init__(self,
                  settings_file: Optional[str] = None,
                  env_prefix: str = 'APP_SETTINGS',
@@ -246,7 +245,9 @@ def parse_env_vars(env_prefix: Optional[str] = None,
     args:
         env_prefix: Only environment variables which start with this string
             (case insensitive) are considered.
-        max_depth: Maximumum depth of nested variables to consider.
+        max_depth: Maximumum depth of nested environment variables to consider.
+            Note that if a file is given, the maximum depth does not apply as
+            the definition is clear.
         split_char: Character to split variables at. Note that if env_prefix
             is given, the variable name must also be seperated from the base
             with this character.
@@ -291,7 +292,7 @@ def get_env_var_value(env_var: str) -> Any:
     v = os.environ[env_var]
     try:
         return toml._load_value(v)[0]
-    except (ValueError, TypeError, IndexError):
+    except (ValueError, TypeError, IndexError, toml.TomlDecodeError):
         return v
 
 
