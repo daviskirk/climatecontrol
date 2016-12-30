@@ -33,7 +33,7 @@ Then use them in your python modules:
 .. code:: python
 
    from climatecontrol.settings_parser import Settings
-   settings_map = Settings(env_prefix='MY_APP')
+   settings_map = Settings(prefix='MY_APP')
    print(dict(settings_map))
 
    {
@@ -67,6 +67,56 @@ settings:
            'new_env_var': 'new_env_data'
        }
    }
+
+
+Now you've noticed that you want more complex configurations and have settings
+variables with underscores all over the place. For this situation you can
+escape the section - splitting mechanism by using the splitting character twice
+in your env variables:
+
+.. code:: python
+
+   settings_map = Settings(prefix='MY_APP', max_depth=3)
+   print(dict(settings_map))
+
+   {
+       'section1': {
+           'subsection1': 'test1'
+       },
+       'section2': {
+           'subsection2': 'test2',
+           'subsection3': 'test3',
+           'new': {
+               'env': {
+                   'var': 'new_env_data'
+               }
+           }
+       }
+   }
+
+   # That was ugly... we wanted something else
+   del os.environ['MY_APP_SECTION2_NEW_ENV_VAR']
+
+   # Notice the __ in the variable:
+   os.environ['MY_APP_SECTION2_NEW_ENV__VAR'] = 'new_env_data'
+
+   # Now let's look again
+   settings_map.update()
+   print(dict(settings_map))
+
+   {
+       'section1': {
+           'subsection1': 'test1'
+       },
+       'section2': {
+           'subsection2': 'test2',
+           'subsection3': 'test3',
+           'new': {
+               'env_var': 'new_env_data'
+           }
+       }
+   }
+
 
 
 Settings file support
