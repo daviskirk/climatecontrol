@@ -4,15 +4,15 @@
 Test settings.
 """
 
+import click
+from click.testing import CliRunner
 import sys
 import os
 import pytest
 from collections.abc import Mapping
 from unittest.mock import MagicMock
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from climatecontrol import settings_parser, cli_utils
-import click
-from click.testing import CliRunner
+from climatecontrol import settings_parser, cli_utils  # noqa: E402
 
 
 def test_settings_empty(mock_empty_os_environ):
@@ -145,7 +145,7 @@ def test_filters(mock_empty_os_environ):
         MY_APP_SECTION3='not_captured',
     ))
     settings_map = settings_parser.Settings(prefix='MY_APP', filters=['section1', {'section2': '*'}])
-    # assert dict(settings_map) == {'subsection1': 'test1'}, 'section2': {'subsection2': 'test2', 'subsection3': 'test3'}}
+    assert dict(settings_map) == {'subsection1': 'test1', 'subsection2': 'test2', 'subsection3': 'test3'}
 
 
 @pytest.mark.parametrize('use_method', [True, False])

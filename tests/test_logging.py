@@ -7,13 +7,11 @@ Test logging.
 import sys
 import os
 import logging
-import pytest
-from collections.abc import Mapping
 from contextlib import redirect_stderr
 import io
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from climatecontrol import logtools, settings_parser
+from climatecontrol import logtools  # noqa: E402
 
 
 def test_logging(monkeypatch, tmpdir):
@@ -27,6 +25,3 @@ def test_logging(monkeypatch, tmpdir):
         logging_output = buf.getvalue()
         assert 'UTC [WARNING] climatecontrol.logtools: Custom log settings not found.  Using defaults.\n' in logging_output
         assert 'UTC [INFO] test_logging_logger: test after\n' in logging_output
-
-if __name__ == '__main__':
-    sys.exit()

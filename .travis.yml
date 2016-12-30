@@ -2,9 +2,9 @@ language: python
 python:
   - 3.5
 install:
-  - pip install coveralls
-  - pip install mypy-lang
+  - pip install coveralls mypy-lang flake8
 script:
+  - flake8
   - python setup.py typecheck
   - python setup.py test
 after_success:

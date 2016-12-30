@@ -61,6 +61,7 @@ class Typecheck(Command):
         errno = call(args, cwd=rootdir)
         sys.exit(errno)
 
+
 setup(
     name='climatecontrol',
     use_scm_version=True,

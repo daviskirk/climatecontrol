@@ -7,10 +7,8 @@ Test settings.
 import sys
 import os
 import pytest
-from collections.abc import Mapping
-from unittest.mock import MagicMock
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from climatecontrol import settings_parser, cli_utils
+from climatecontrol import settings_parser  # noqa: E402
 
 
 @pytest.fixture

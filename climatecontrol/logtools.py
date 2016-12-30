@@ -9,7 +9,7 @@ import logging.config as logging_config
 
 from copy import deepcopy
 import time
-from typing import Optional, Dict
+from typing import Optional, Dict, Any  # noqa: F401
 
 formatter = logging.Formatter  # type: Any
 formatter.converter = time.gmtime

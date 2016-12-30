@@ -7,11 +7,8 @@ Test settings.
 import sys
 import os
 import pytest
-from collections.abc import Mapping
-from unittest.mock import MagicMock
-import pytest
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from climatecontrol import settings_parser, cli_utils
+from climatecontrol import settings_parser  # noqa: E402
 
 
 @pytest.mark.parametrize('attr, value, expected', [
@@ -93,7 +90,7 @@ def test_parse_environment_vars(mock_os_environ, prefix, max_depth, split_char, 
         }
     ),
     (
-         -1,
+        -1,
         {
             'TEST_STUFF_TESTGROUP_TEST__INT': '6',
             'TEST_STUFF_TESTGROUP_TEST__ARRAY': '[4, 5, 6]',

@@ -10,11 +10,8 @@ try:
     import click
 except ImportError:
     click = None
-from collections.abc import Mapping as MappingABC
-from functools import wraps
-from typing import Optional, Iterable, List, Set, Sequence, Union, Any, Callable, Mapping, Dict, Iterator, NamedTuple
-from . import logtools
-import itertools
+from collections.abc import Mapping as MappingABC  # type: ignore
+from typing import Optional, Iterable, Set, Sequence, Union, Any, Callable, Mapping, Dict, Iterator, NamedTuple
 from pprint import pformat
 import logging
 from copy import deepcopy
@@ -181,7 +178,7 @@ class Settings(MappingABC, Mapping):
         return cli_utils.click_settings_file_option(self, **kw)
 
 
-EnvSetting = NamedTuple('EnvSetting', [('name', str), ('value', Any)])
+EnvSetting = NamedTuple('EnvSetting', [('name', str), ('value', Mapping[str, Any])])
 
 
 class EnvParser:
@@ -315,9 +312,9 @@ class EnvParser:
             args = [self.escape_placeholder, self.split_char]
         else:
             args = [self.split_char * 2, self.escape_placeholder]
-        return s.replace(*args)
+        return s.replace(args[0], args[1])
 
-    def _iter_parse(self, include_file=True) -> Iterator[Dict[str, Any]]:
+    def _iter_parse(self, include_file=True) -> Iterator[EnvSetting]:
         """Used in ``parse``"""
         for env_var in os.environ:
             env_var_low = env_var.lower()
@@ -353,7 +350,7 @@ class EnvParser:
             return v
 
 
-def read_file(path_or_content, raise_error=False) -> str:
+def read_file(path_or_content, raise_error=False) -> Dict[str, Any]:
     """Reads toml file. If ``path_or_content`` is a valid filename, load the file.
     If ``path_or_content`` represents a toml string instead (for example the
     contents of a toml file), parse the string directly.

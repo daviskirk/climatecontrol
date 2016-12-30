@@ -10,8 +10,7 @@ import os
 import pytest
 sys.path.insert(0, os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..')))
-
-from climatecontrol import settings_parser
+from climatecontrol import settings_parser  # noqa: E402
 
 
 @pytest.fixture
@@ -28,8 +27,7 @@ def subtree_data():
                 'setting5': 5,
                 'setting6': 6,
             }
-
-            },
+        },
         'subtree3': {
             'settings7': 7
         }
