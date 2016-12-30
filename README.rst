@@ -1,4 +1,4 @@
-|Build Status| |Coverage Status|
+|Build Status| |Coverage Status| |PyPi Status|
 
 
 CLIMATECONTROL
@@ -173,5 +173,7 @@ whithout needing to set any env vars.
    :target: https://travis-ci.org/daviskirk/climatecontrol
 .. |Coverage Status| image:: https://coveralls.io/repos/github/daviskirk/climatecontrol/badge.svg?branch=master
    :target: https://coveralls.io/github/daviskirk/climatecontrol?branch=master
+.. |PyPi Status| image:: https://badge.fury.io/py/climatecontrol.svg
+   :target: https://badge.fury.io/py/climatecontrol
 .. _click: http://click.pocoo.org/
 .. _toml: https://github.com/toml-lang/toml
