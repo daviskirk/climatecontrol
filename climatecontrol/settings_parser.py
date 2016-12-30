@@ -209,7 +209,7 @@ class EnvParser:
 
     Examples:
 
-        >>> env_parser = EnvParser(prefix='THIS_EXAMPLE', max_depth=2, split_char='_', settings_file_suffix='SETTINGS_FILE')
+        >>> env_parser = EnvParser(prefix='THIS_EXAMPLE')
         >>>
         >>> with os.open('settings.toml', 'w') as f:
         ...     f.write('[testgroup]\nother_var = 345')
