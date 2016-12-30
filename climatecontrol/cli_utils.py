@@ -43,7 +43,7 @@ def click_settings_file_option(settings_obj: settings_parser.Settings,
     """
     def validate(ctx, param, value):
         if value:
-            settings_obj.settings_file = value
+            settings_obj.settings_files = value
             settings_obj.update()
 
     option = click_obj.option(
@@ -52,7 +52,8 @@ def click_settings_file_option(settings_obj: settings_parser.Settings,
         callback=validate,
         type=click.Path(exists=True, dir_okay=False, resolve_path=True),
         expose_value=False,
-        is_eager=True
+        is_eager=True,
+        multiple=True
     )
 
     return option

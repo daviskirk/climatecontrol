@@ -4,32 +4,16 @@
 Logging utilities.
 """
 
-import os
 import logging
 import logging.config as logging_config
 
-from functools import wraps
 from copy import deepcopy
 import time
-from typing import Optional, Any, Callable, Dict
+from typing import Optional, Dict
 
 formatter = logging.Formatter  # type: Any
 formatter.converter = time.gmtime
 logger = logging.getLogger(__name__)  # type: logging.Logger
-
-
-def log_exception(logger: logging.Logger, message='An unexpected error occurred!', reraise=True) -> Callable:
-    def log_exception_decorator(f):
-        @wraps(f)
-        def wrapper(*args, **kwargs):
-            try:
-                return f(*args, **kwargs)
-            except Exception:
-                logger.exception(message)
-                if reraise:
-                    raise
-        return wrapper
-    return log_exception_decorator
 
 
 DEFAULT_LOG_SETTINGS = {
@@ -56,14 +40,14 @@ DEFAULT_LOG_SETTINGS = {
 
 def setup_logging(settings_file: Optional[str] = None,
                   env_prefix: str = 'APP_SETTINGS',
-                  settings_file_env_suffix: str = 'SETTINGS_FILE',
+                  settings_file_suffix: str = 'SETTINGS_FILE',
                   logging_section: str = 'LOGGING') -> None:
     """Configure logging
 
     args:
         settings_file: pass to `settings_parser.Settings`
         env_prefix: passed to `settings_parser.Settings`
-        settings_file_env_suffix: passed to `settings_parser.Settings`
+        settings_file_suffix: passed to `settings_parser.Settings`
         logging_section: string indicating what section of the configuration should be used as logging settings.
     """
 
@@ -88,9 +72,9 @@ def setup_logging(settings_file: Optional[str] = None,
             logging_settings['handlers']['file']['filename'] = logging_filename
         return logging_settings
 
-    logging_settings = Settings(settings_file=settings_file,
-                                env_prefix=env_prefix,
-                                settings_file_env_suffix=settings_file_env_suffix,
+    logging_settings = Settings(settings_files=settings_file,
+                                prefix=env_prefix,
+                                settings_file_suffix=settings_file_suffix,
                                 parser=parse)
     logging_config.dictConfig(logging_settings)
 
