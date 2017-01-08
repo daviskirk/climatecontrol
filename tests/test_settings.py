@@ -97,6 +97,28 @@ def test_settings_files_and_env_file_and_env(mock_env_settings_file, tmpdir):
     }
 
 
+@pytest.mark.parametrize('order, expected', [
+    (None, {'testgroup': {'testvar': 'external'}}),
+    (('env', 'env_file', 'files', 'external'), {'testgroup': {'testvar': 'external'}}),
+    (('env', 'env_file', 'external', 'files'), {'testgroup': {'testvar': 'file'}}),
+    (('env', 'external', 'files', 'env_file'), {'testgroup': {'testvar': 'env_file'}}),
+    (('external', 'env_file', 'files', 'env'), {'testgroup': {'testvar': 'env'}})
+])
+def test_settings_parsing_order(tmpdir, order, expected):
+    os.environ['TEST_STUFF_TESTGROUP_TESTVAR'] = 'env'
+    os.environ['TEST_STUFF_SETTINGS_FILE'] = '[testgroup]\ntestvar = "env_file"'
+    subdir = tmpdir.mkdir('order_subdir')
+    p = subdir.join('settings.toml')
+    p.write('[testgroup]\ntestvar = "file"')
+    settings_map = settings_parser.Settings(prefix='TEST_STUFF',
+                                            parse_order=order,
+                                            settings_files=[str(p)],
+                                            update_on_init=False)
+    settings_map.update({'testgroup': {'testvar': 'external'}})
+    assert isinstance(settings_map, Mapping)
+    assert dict(settings_map) == expected
+
+
 def mock_parser_fcn(s):
     return s
 
@@ -182,6 +204,6 @@ def test_cli_utils1(mock_empty_os_environ, mock_settings_file, mode, option_name
         assert result.exit_code == 2
         assert result.output == (
             'Usage: tmp_cli [OPTIONS]\n\n'
-            'Error: Invalid value for "--{}": '
+            'Error: Invalid value for "--{}" / "-{}": '
             'Path "badlfkjasfkj" does not exist.'
-            '\n').format(option_name)
+            '\n').format(option_name, option_name[0])

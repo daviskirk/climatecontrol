@@ -10,11 +10,14 @@ try:
     import click
 except ImportError:
     click = None
+from collections import OrderedDict
 from collections.abc import Mapping as MappingABC  # type: ignore
-from typing import Optional, Iterable, Set, Sequence, Union, Any, Callable, Mapping, Dict, Iterator, NamedTuple
+from functools import partial
+from typing import Optional, Iterable, Set, Sequence, Union, Any, Callable, Mapping, Dict, Iterator, NamedTuple, Tuple
 from pprint import pformat
 import logging
 from copy import deepcopy
+from .logtools import DEFAULT_LOG_SETTINGS, logging_config
 logger = logging.getLogger(__name__)
 
 
@@ -32,16 +35,17 @@ class Settings(MappingABC, Mapping):
                  settings_files: Optional[Sequence[str]] = None,
                  filters: Optional[Union[str, Iterable, Mapping]] = None,
                  parser: Optional[Callable] = None,
+                 parse_order: Optional[Sequence[str]] = None,
                  update_on_init: bool = True,
                  **env_parser_kwargs) -> None:
         """A Settings instance allows settings to be loaded from a settings file or
         environment variables.
 
         Attributes:
-            settings_file: If set, is used as a path to a settings file (toml
-                format) from which all settings are loaded. This file will take
-                precedence over the environment variables and settings file set
-                with environment variables.
+            settings_files: If set, a sequence of paths to settings files (toml
+                format) from which all settings are loaded. The files are
+                loaded one after another with variables set in later files
+                overwriting values set in previous files.
             env_parser: `EnvParser` object handling the parsing of environment variables
             filters: Allows the settings to be filtered depending on the passed
                 value. A string value will only use the settings section defined
@@ -51,6 +55,10 @@ class Settings(MappingABC, Mapping):
                 result of the settings. The function should take a single
                 nested dictionary argument (the settings map) as an argument
                 and output a nested dictionary.
+            parse_order: Order in which options are parsed. If no
+                ``parse_order`` argument is given upon initialization, the
+                default order: ``("env", "env_file", "files", "external")`` is
+                used.
             update_on_init: If set to `False` no parsing is performed upon
                 initialization of the object. You will need to call update
                 manually if you want load use any settings.
@@ -59,6 +67,7 @@ class Settings(MappingABC, Mapping):
             settings_files: See attribute
             filters: See attribute
             parser: See attribute
+            parse_order: See attribute
             update_on_init: If set to ``True``, read all configurations upon initialization.
             **env_parser_kwargs: Arguments passed to ``EnvParser`` constructor.
 
@@ -91,8 +100,36 @@ class Settings(MappingABC, Mapping):
         self.settings_files = settings_files
         self.external_data = {}  # type: Dict
         self._data = {}  # type: Dict
+        self.parse_order = parse_order
         if update_on_init:
             self.update()
+
+    def __repr__(self) -> str:
+        return self.__class__.__qualname__ + '[\n{}\n]'.format(pformat(dict(**self)))
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+    def __getitem__(self, key: str) -> Any:
+        return self._data[key]
+
+    def __iter__(self) -> Iterator[str]:
+        yield from self._data
+
+    @property
+    def parse_order(self) -> Tuple[str, ...]:
+        return self._parse_order
+
+    @parse_order.setter
+    def parse_order(self, parse_order: Sequence[str]) -> None:
+        parse_options = self._parse_option_fcn_map.keys()
+        if parse_order:
+            if len(parse_order) != len(parse_options) or set(parse_order) != set(parse_options):
+                raise ValueError('``parse_order`` must be sequence containing all strings {}. Got {} instead.'
+                                 .format(self.default_parse_order, parse_order))
+        else:
+            parse_order = tuple(parse_options)
+        self._parse_order = tuple(parse_order)
 
     @property
     def parser(self) -> Callable:
@@ -114,6 +151,15 @@ class Settings(MappingABC, Mapping):
         if isinstance(files, str):
             files = (files,)
         self._settings_files = list(files)
+
+    @property
+    def _parse_option_fcn_map(self) -> OrderedDict:
+        return OrderedDict([
+            ('env', partial(self.env_parser.parse, include_file=False)),
+            ('env_file', partial(self.env_parser.parse, include_vars=False)),
+            ('files', self._parse_files),
+            ('external', lambda: self.external_data)
+        ])
 
     def update(self, d: Optional[Union[Mapping, Dict]] = None, clear_external: bool = False) -> None:
         """Updates object settings and reload files and environment variables.
@@ -138,16 +184,15 @@ class Settings(MappingABC, Mapping):
 
         """
         settings_map = {}  # type: Dict
-        # only try to parse file from environment variable if explicit file is
-        # not given
-        update_nested(settings_map, self.env_parser.parse())
-        for settings_file in self.settings_files:
-            update_nested(settings_map, read_file(settings_file, raise_error=True))
         if clear_external:
             self.external_data = {}
         if d:
             update_nested(self.external_data, d)
-            update_nested(settings_map, self.external_data)
+        parse_option_fcn_map = self._parse_option_fcn_map
+        for parse_option in self.parse_order:
+            fcn = parse_option_fcn_map[parse_option]
+            settings_map_updates = fcn()
+            update_nested(settings_map, settings_map_updates)
         settings_map = self.subtree(settings_map)
         self._data = self.parse(settings_map)
 
@@ -157,17 +202,17 @@ class Settings(MappingABC, Mapping):
         else:
             return data
 
-    def __repr__(self) -> str:
-        return self.__class__.__qualname__ + '[\n{}\n]'.format(pformat(dict(**self)))
+    def setup_logging(self, logging_section='logging'):
+        """Initialize logging. Uses the ``'logging'`` section from the global
+        ``SETTINGS`` object if available. Otherwise uses sane defaults provided by
+        the ``climatecontrol`` package
 
-    def __len__(self) -> int:
-        return len(self._data)
-
-    def __getitem__(self, key: str) -> Any:
-        return self._data[key]
-
-    def __iter__(self) -> Iterator[str]:
-        yield from self._data
+        """
+        logging_settings = deepcopy(DEFAULT_LOG_SETTINGS)
+        logging_settings_update = self.get(logging_section, {})
+        if logging_settings_update:
+            logging_settings.update(logging_settings_update)
+        logging_config.dictConfig(logging_settings)
 
     def subtree(self, data: Dict) -> Dict:
         return subtree(data, self.filters, parent_hierarchy=['settings'])
@@ -176,6 +221,14 @@ class Settings(MappingABC, Mapping):
         """See `cli_utils.click_settings_file_option`"""
         from . import cli_utils
         return cli_utils.click_settings_file_option(self, **kw)
+
+    def _parse_files(self) -> Dict[str, Any]:
+        file_settings_map = {}  # type: Dict[str, Any]
+        for settings_file in self.settings_files:
+            file_update = read_file(settings_file, raise_error=True)
+            if file_update:
+                update_nested(file_settings_map, file_update)
+        return file_settings_map
 
 
 EnvSetting = NamedTuple('EnvSetting', [('name', str), ('value', Mapping[str, Any])])
@@ -273,7 +326,7 @@ class EnvParser:
             raise ValueError('``split_char`` must be a single character')
         self._split_char = str(char)
 
-    def parse(self, include_file: bool = True) -> Dict[str, Any]:
+    def parse(self, include_vars=True, include_file: bool = True) -> Dict[str, Any]:
         """Convert environment variables to nested dict. Note that all string inputs
         are case insensitive and all resulting keys are lower case.
 
@@ -292,7 +345,7 @@ class EnvParser:
 
         """
         settings_map = {}  # type: dict
-        for env_var, settings in self._iter_parse(include_file=include_file):
+        for env_var, settings in self._iter_parse(include_vars=include_vars, include_file=include_file):
             logger.info('Parsed setting from env var: {}.'.format(env_var))
             update_nested(settings_map, settings)
         return settings_map
@@ -314,28 +367,31 @@ class EnvParser:
             args = [self.split_char * 2, self.escape_placeholder]
         return s.replace(args[0], args[1])
 
-    def _iter_parse(self, include_file=True) -> Iterator[EnvSetting]:
+    def _iter_parse(self, include_vars: bool = True, include_file: bool = True) -> Iterator[EnvSetting]:
         """Used in ``parse``"""
-        for env_var in os.environ:
-            env_var_low = env_var.lower()
-            if env_var_low in self.exclude or not env_var_low.startswith(self.prefix.lower()):
-                continue
-            escaped = self._escape(env_var_low)[len(self.prefix):]
-            escaped_nested_keys = escaped.split(self.split_char, self.max_depth)
-            nested_keys = [self._unescape(k) for k in escaped_nested_keys]
-            if not nested_keys:
-                continue
-            update = {}  # type: dict
-            u = update
-            for nk in nested_keys[:-1]:
-                u[nk] = {}
-                u = u[nk]
-            value = self._get_env_var_value(env_var)
-            u[nested_keys[-1]] = value
-            yield EnvSetting(env_var, update)
+        if include_vars:
+            for env_var in os.environ:
+                env_var_low = env_var.lower()
+                if env_var_low in self.exclude or not env_var_low.startswith(self.prefix.lower()):
+                    continue
+                escaped = self._escape(env_var_low)[len(self.prefix):]
+                escaped_nested_keys = escaped.split(self.split_char, self.max_depth)
+                nested_keys = [self._unescape(k) for k in escaped_nested_keys]
+                if not nested_keys:
+                    continue
+                update = {}  # type: dict
+                u = update
+                for nk in nested_keys[:-1]:
+                    u[nk] = {}
+                    u = u[nk]
+                value = self._get_env_var_value(env_var)
+                u[nested_keys[-1]] = value
+                if update:
+                    yield EnvSetting(env_var, update)
         if include_file:
             settings_file = os.environ.get(self.settings_file_env_var)
-            yield EnvSetting(self.settings_file_env_var, read_file(settings_file))
+            if settings_file:
+                yield EnvSetting(self.settings_file_env_var, read_file(settings_file))
 
     def _unescape(self, s: str) -> str:
         """See ``escape`` with ``inverse`` set to ``True``."""

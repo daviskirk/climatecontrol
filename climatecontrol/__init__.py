@@ -9,4 +9,4 @@ variables.
 
 """
 
-from .settings_parser import Settings  # noqa: F401
+from .settings_parser import Settings, SettingsValidationError, SettingsFileError  # noqa: F401

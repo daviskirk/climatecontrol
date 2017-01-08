@@ -48,6 +48,7 @@ def click_settings_file_option(settings_obj: settings_parser.Settings,
 
     option = click_obj.option(
         '--{}'.format(option_name),
+        '-{}'.format(option_name[0]),
         help='Settings file path for loading settings from toml file.',
         callback=validate,
         type=click.Path(exists=True, dir_okay=False, resolve_path=True),
@@ -55,5 +56,4 @@ def click_settings_file_option(settings_obj: settings_parser.Settings,
         is_eager=True,
         multiple=True
     )
-
     return option
