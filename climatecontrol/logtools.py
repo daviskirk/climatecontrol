@@ -9,7 +9,7 @@ import logging.config as logging_config
 
 from copy import deepcopy
 import time
-from typing import Optional, Dict, Any  # noqa: F401
+from typing import cast, Optional, Dict, Any  # noqa: F401
 
 formatter = logging.Formatter  # type: Any
 formatter.converter = time.gmtime
@@ -76,7 +76,7 @@ def setup_logging(settings_file: Optional[str] = None,
                                 prefix=env_prefix,
                                 settings_file_suffix=settings_file_suffix,
                                 parser=parse)
-    logging_config.dictConfig(logging_settings)
+    logging_config.dictConfig(cast(dict, logging_settings))
 
     if not using_custom:
         logger.warning('Custom log settings not found.  Using defaults.')

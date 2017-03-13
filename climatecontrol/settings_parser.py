@@ -11,9 +11,8 @@ try:
 except ImportError:
     click = None
 from collections import OrderedDict
-from collections.abc import Mapping as MappingABC  # type: ignore
 from functools import partial
-from typing import Optional, Iterable, Set, Sequence, Union, Any, Callable, Mapping, Dict, Iterator, NamedTuple, Tuple
+from typing import cast, Optional, Iterable, Set, Sequence, Union, Any, Callable, Mapping, Dict, Iterator, NamedTuple, Tuple
 from pprint import pformat
 import logging
 from copy import deepcopy
@@ -29,7 +28,7 @@ class SettingsFileError(ValueError):
     pass
 
 
-class Settings(MappingABC, Mapping):
+class Settings(Mapping):
 
     def __init__(self,
                  settings_files: Optional[Sequence[str]] = None,
@@ -105,7 +104,7 @@ class Settings(MappingABC, Mapping):
             self.update()
 
     def __repr__(self) -> str:
-        return self.__class__.__qualname__ + '[\n{}\n]'.format(pformat(dict(**self)))
+        return self.__class__.__qualname__ + '[\n{}\n]'.format(pformat(dict(**cast(Dict, self))))
 
     def __len__(self) -> int:
         return len(self._data)
@@ -126,7 +125,7 @@ class Settings(MappingABC, Mapping):
         if parse_order:
             if len(parse_order) != len(parse_options) or set(parse_order) != set(parse_options):
                 raise ValueError('``parse_order`` must be sequence containing all strings {}. Got {} instead.'
-                                 .format(self.default_parse_order, parse_order))
+                                 .format(list(parse_options), parse_order))
         else:
             parse_order = tuple(parse_options)
         self._parse_order = tuple(parse_order)

@@ -9,7 +9,7 @@ from . import settings_parser
 
 
 def click_settings_file_option(settings_obj: settings_parser.Settings,
-                               click_obj=click, option_name='settings'):
+                               click_obj=click, option_name='settings', **kw):
     """Convenience function for building a `click` option decorator
 
     Args:
@@ -46,14 +46,18 @@ def click_settings_file_option(settings_obj: settings_parser.Settings,
             settings_obj.settings_files = value
             settings_obj.update()
 
-    option = click_obj.option(
-        '--{}'.format(option_name),
-        '-{}'.format(option_name[0]),
+    option_kwargs = dict(
         help='Settings file path for loading settings from toml file.',
         callback=validate,
         type=click.Path(exists=True, dir_okay=False, resolve_path=True),
         expose_value=False,
         is_eager=True,
-        multiple=True
+        multiple=True,
+    )
+    option_kwargs.update(kw)
+    option = click_obj.option(
+        '--{}'.format(option_name),
+        '-{}'.format(option_name[0]),
+        **option_kwargs
     )
     return option

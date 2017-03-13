@@ -52,12 +52,12 @@ class Typecheck(Command):
             raise RuntimeError((
                 'mypy must be installed before typecheck can be preformed.'
                 'Try running:\n'
-                'pip install mypy-lang\n'
+                'pip install mypy\n'
                 'and then repeating this command'))
-        args = [bin_path, '-s', '--check-untyped-defs']
+        args = [bin_path]
         if self.mypy_args:
             args.append(self.mypy_args)
-        args += ['--package', 'climatecontrol']
+        args += ['climatecontrol']
         errno = call(args, cwd=rootdir)
         sys.exit(errno)
 
