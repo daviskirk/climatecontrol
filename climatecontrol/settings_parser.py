@@ -12,7 +12,8 @@ except ImportError:
     click = None
 from collections import OrderedDict
 from functools import partial
-from typing import cast, Optional, Iterable, Set, Sequence, Union, Any, Callable, Mapping, Dict, Iterator, NamedTuple, Tuple
+from typing import (cast, Optional, Iterable, Set, Sequence, Union, Any, Callable,
+                    Mapping, Dict, Iterator, NamedTuple, Tuple)
 from pprint import pformat
 import logging
 from copy import deepcopy
