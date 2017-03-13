@@ -17,6 +17,9 @@ Install
     pip install climatecontrol
 
 
+Note that versions 0.2.4 and below will probably not work with python 3.5.2 and
+below. Default 3.5 branch should work fine though.
+
 Usage
 -----
 
