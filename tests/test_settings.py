@@ -11,6 +11,7 @@ import os
 import pytest
 from collections.abc import Mapping
 from unittest.mock import MagicMock
+import toml
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from climatecontrol import settings_parser, cli_utils  # noqa: E402
 
@@ -207,3 +208,19 @@ def test_cli_utils1(mock_empty_os_environ, mock_settings_file, mode, option_name
             'Error: Invalid value for "--{}" / "-{}": '
             'Path "badlfkjasfkj" does not exist.'
             '\n').format(option_name, option_name[0])
+
+
+def test_get_configuration_file(mock_empty_os_environ, mock_settings_file, tmpdir):
+    """Test writing out an example configuration file"""
+    settings_file_path, expected = mock_settings_file
+    settings_map = settings_parser.Settings(prefix='TEST_STUFF',
+                                            settings_files=settings_file_path)
+    s = settings_map.get_configuration_file()
+    expected = mock_settings_file[1]
+    assert toml.loads(s) == expected
+
+    subdir = tmpdir.mkdir('config_write_subdir')
+    p = subdir.join('example_settings.toml')
+    s = settings_map.get_configuration_file(str(p))
+
+    assert toml.load(str(p)) == expected

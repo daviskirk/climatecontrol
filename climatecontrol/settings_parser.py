@@ -161,6 +161,15 @@ class Settings(Mapping):
             ('external', lambda: self.external_data)
         ])
 
+    def get_configuration_file(self, save_to=None):
+        default_str = toml.dumps(OrderedDict(sorted(self._data.items())))
+        default_str = default_str.replace('\n[', '\n\n[')
+        if save_to:
+            with open(save_to, 'w') as f:
+                f.write(default_str)
+        else:
+            return default_str
+
     def update(self, d: Optional[Union[Mapping, Dict]] = None, clear_external: bool = False) -> None:
         """Updates object settings and reload files and environment variables.
 
