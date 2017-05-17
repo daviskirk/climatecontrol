@@ -48,6 +48,17 @@ def test_settings_parse(mock_os_environ):
     assert dict(settings_map) == expected
 
 
+def test_parse_from_file_vars(mock_os_environ, tmpdir):
+    settings_map = settings_parser.Settings(update_on_init=False)
+    filepath = tmpdir.join('testvarfile')
+    filename = str(filepath)
+    with open(filename, 'w') as f:
+        f.write('apassword\n')
+    settings_map.update({'this_var_from_file': filename})
+    assert isinstance(settings_map, Mapping)
+    assert dict(settings_map) == {'this_var': 'apassword'}
+
+
 @pytest.mark.parametrize('settings_files', ['asd;kjhaflkjhasf', '.', '/home/', ['.', 'asd;kjhaflkjhasf']])
 def test_settings_files_fail(mock_empty_os_environ, settings_files):
     with pytest.raises(settings_parser.SettingsFileError):

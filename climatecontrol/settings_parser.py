@@ -12,8 +12,9 @@ except ImportError:
     click = None
 from collections import OrderedDict
 from functools import partial
-from typing import (cast, Optional, Iterable, Set, Sequence, Union, Any, Callable,
-                    Mapping, Dict, Iterator, NamedTuple, Tuple)
+from typing import List  # noqa F401
+from typing import (cast, Any, Callable, Iterable, Set, Sequence,
+                    Optional, Union, Mapping, Dict, Iterator, NamedTuple, Tuple)
 from pprint import pformat
 import logging
 from copy import deepcopy
@@ -36,6 +37,7 @@ class Settings(Mapping):
                  filters: Optional[Union[str, Iterable, Mapping]] = None,
                  parser: Optional[Callable] = None,
                  parse_order: Optional[Sequence[str]] = None,
+                 preparsers: Sequence = ('parse_from_file_vars',),
                  update_on_init: bool = True,
                  **env_parser_kwargs) -> None:
         """A Settings instance allows settings to be loaded from a settings file or
@@ -96,6 +98,7 @@ class Settings(Mapping):
         """
         self.env_parser = EnvParser(**(env_parser_kwargs or {}))
         self.parser = parser
+        self.preparsers = preparsers
         self.filters = filters
         self.settings_files = settings_files
         self.external_data = {}  # type: Dict
@@ -140,6 +143,19 @@ class Settings(Mapping):
         if value and not callable(value):
             raise TypeError('If given, ``parser`` must be a callable')
         self._parse = value
+
+    @property
+    def preparsers(self) -> Tuple[Callable, ...]:
+        return self._preparsers
+
+    @preparsers.setter
+    def preparsers(self, preparsers: Sequence) -> None:
+        parsed_preparsers = []
+        for preparser in preparsers:
+            if isinstance(preparser, str):
+                preparser = getattr(self, preparser)
+            parsed_preparsers.append(preparser)
+        self._preparsers = tuple(parsed_preparsers)
 
     @property
     def settings_files(self) -> Sequence:
@@ -206,6 +222,9 @@ class Settings(Mapping):
         self._data = self.parse(settings_map)
 
     def parse(self, data) -> Dict:
+        for preparser in self.preparsers:
+            data = preparser(data)
+
         if self._parse:
             return self._parse(data)
         else:
@@ -238,6 +257,28 @@ class Settings(Mapping):
             if file_update:
                 update_nested(file_settings_map, file_update)
         return file_settings_map
+
+    def parse_from_file_vars(self, data: Any, postfix_trigger='_from_file') -> Any:
+        if not data:
+            return data
+        elif isinstance(data, Mapping):
+            new_data = {k: v for k, v in data.items()}  # type: Any
+            items = tuple(data.items())
+        elif isinstance(data, Sequence) and not isinstance(data, str):
+            new_data = [item for item in data]
+            items = tuple(enumerate(data))
+        else:
+            return data
+        for k, v in items:
+            if isinstance(v, str) and isinstance(k, str) and k.lower().endswith(postfix_trigger):
+                with open(v) as f:
+                    v_from_file = f.read().rstrip()
+                del new_data[k]
+                new_data[k[:-len(postfix_trigger)]] = v_from_file
+            elif isinstance(v, (Mapping, Sequence)):
+                parsed_v = self.parse_from_file_vars(v)
+                new_data[k] = parsed_v
+        return new_data
 
 
 EnvSetting = NamedTuple('EnvSetting', [('name', str), ('value', Mapping[str, Any])])
