@@ -20,6 +20,7 @@ Install
 Note that versions 0.2.4 and below will probably not work with python 3.5.2 and
 below. Default 3.5 branch should work fine though.
 
+
 Usage
 -----
 
@@ -121,7 +122,6 @@ in your env variables:
    }
 
 
-
 Settings file support
 ---------------------
 
@@ -144,6 +144,34 @@ The file could look like this:
    [section2]
    subsection2 = "test2"
    subsection3 = "test3"
+
+
+Setting variables whos values are saved in files
+------------------------------------------------
+
+Sometimes we don't want to save values in plain text in environment files or in
+the settings file itself. Instead we have a file that contains the value of the
+setting we want. A good example for this behaviour are docker _secrets that
+store secrets in temporary files.
+
+To read a variable from a file, simply add a `"_from_file"` to the variable
+name and give it the path to the file that contains the variable as a value.
+
+Using:
+
+.. code::
+
+   [section1]
+   subsection1 = /home/myuser/supersecret.txt
+
+or
+
+.. code:: sh
+
+   export MY_APP_SECTION1_SUBSECTION1_FROM_FILE="/home/myuser/supersecret.txt"
+
+will both write the content of the file at `"/home/myuser/supersecret.txt"`
+into the variable `section1 -> sebsection1`.
 
 
 Command line support using click
@@ -180,3 +208,4 @@ whithout needing to set any env vars.
    :target: https://badge.fury.io/py/climatecontrol
 .. _click: http://click.pocoo.org/
 .. _toml: https://github.com/toml-lang/toml
+.. _secrets: https://docs.docker.com/engine/swarm/secrets

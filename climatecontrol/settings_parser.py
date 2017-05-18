@@ -57,6 +57,10 @@ class Settings(Mapping):
                 result of the settings. The function should take a single
                 nested dictionary argument (the settings map) as an argument
                 and output a nested dictionary.
+            preparsers: Sequence of preparsers (callables) to use. Note that
+                strings are assumed to be methods in the current class. Each
+                preprocessor must take a mapping as input and return a mapping
+                as output.
             parse_order: Order in which options are parsed. If no
                 ``parse_order`` argument is given upon initialization, the
                 default order: ``("env", "env_file", "files", "external")`` is
@@ -69,6 +73,7 @@ class Settings(Mapping):
             settings_files: See attribute
             filters: See attribute
             parser: See attribute
+            preparsers: See attribute
             parse_order: See attribute
             update_on_init: If set to ``True``, read all configurations upon initialization.
             **env_parser_kwargs: Arguments passed to ``EnvParser`` constructor.
