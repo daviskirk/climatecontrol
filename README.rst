@@ -162,7 +162,7 @@ Using:
 .. code::
 
    [section1]
-   subsection1 = /home/myuser/supersecret.txt
+   subsection1_from_file = /home/myuser/supersecret.txt
 
 or
 
