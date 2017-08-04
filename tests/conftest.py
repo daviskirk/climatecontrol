@@ -7,6 +7,9 @@ Test settings.
 import sys
 import os
 import pytest
+import json
+import toml
+import yaml
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from climatecontrol import settings_parser  # noqa: E402
 
@@ -34,9 +37,9 @@ def mock_settings_prefix(monkeypatch):
     monkeypatch.setattr(settings_parser.Settings, 'prefix', 'TEST_STUFF')
 
 
-@pytest.fixture
-def mock_settings_file(monkeypatch, tmpdir):
-    p = tmpdir.mkdir('sub').join('settings.toml')
+@pytest.fixture(params=['.toml', '.yml', '.json'])
+def mock_settings_file(request, monkeypatch, tmpdir):
+    p = tmpdir.mkdir('sub').join('settings' + request.param)
     s = """
     [testgroup]
     testvar = 123
@@ -53,6 +56,14 @@ def mock_settings_file(monkeypatch, tmpdir):
             'blabla': 555
         }
     }
+
+    if request.param == '.toml':
+        p.write(toml.dumps(expected_result))
+    elif request.param == '.yml':
+        p.write('---\n' + yaml.dump(expected_result))
+    elif request.param == '.json':
+        p.write(json.dumps(expected_result))
+
     return str(p), expected_result
 
 

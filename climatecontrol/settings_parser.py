@@ -4,15 +4,21 @@
 Settings parser.
 """
 
+from abc import ABC, abstractmethod
 import os
+import json
 import toml
+try:
+    import yaml
+except ImportError:
+    yaml = None
 try:
     import click
 except ImportError:
     click = None
 from collections import OrderedDict
 from functools import partial
-from typing import List  # noqa F401
+from typing import List, Type # noqa F401
 from typing import (cast, Any, Callable, Iterable, Set, Sequence,
                     Optional, Union, Mapping, Dict, Iterator, NamedTuple, Tuple)
 from pprint import pformat
@@ -23,11 +29,16 @@ logger = logging.getLogger(__name__)
 
 
 class SettingsValidationError(ValueError):
+    """Failed to validate settings."""
     pass
 
 
 class SettingsFileError(ValueError):
-    pass
+    """Settings file is neither path nor content."""
+
+
+class SettingsLoadError(SettingsFileError):
+    """Settings could not be loaded do to format or file being incompatible."""
 
 
 class Settings(Mapping):
@@ -461,7 +472,7 @@ class EnvParser:
             return v
 
 
-def read_file(path_or_content, raise_error=False) -> Dict[str, Any]:
+def read_file(path_or_content: str, raise_error: bool = False) -> Dict[str, Any]:
     """Reads toml file. If ``path_or_content`` is a valid filename, load the file.
     If ``path_or_content`` represents a toml string instead (for example the
     contents of a toml file), parse the string directly.
@@ -478,16 +489,17 @@ def read_file(path_or_content, raise_error=False) -> Dict[str, Any]:
     """
     file_data = {}  # type: Dict
     if path_or_content:
-        if os.path.isfile(path_or_content):
-            path = path_or_content
-            with open(path) as f:
-                file_data = toml.load(f)
-            logger.debug('Loaded settings data from file {}'.format(path))
-        elif path_or_content.lstrip().startswith('['):
-            content = path_or_content
-            file_data = toml.loads(content)
-            logger.debug('Loaded settings from string found in settings file env var')
-        elif raise_error:
+        loaders = [TomlLoader, YamlLoader, JsonLoader]
+        successful_load = None  # Type
+        for loader in loaders:
+            try:
+                file_data = loader.load(path_or_content)
+            except SettingsLoadError:
+                pass
+            else:
+                successful_load = loader
+                break
+        if raise_error and not successful_load:
             raise SettingsFileError('``path_or_content`` is neither path nor content!'
                                     '\nFailed to load:\n{}'.format(path_or_content))
         else:
@@ -539,3 +551,98 @@ def update_nested(d: Dict, u: Mapping) -> Dict:
         else:
             d[k] = u[k]
     return d
+
+
+class FileLoader(ABC):
+    """Abstract base class for file/file content loading."""
+
+    valid_file_extensions = ()  # type: Tuple[str, ...]
+    valid_content_start = ()  # type: Tuple
+
+    @classmethod
+    @abstractmethod
+    def from_path(path: str) -> Any:
+        """Load content from file at path"""
+        pass
+
+    @classmethod
+    @abstractmethod
+    def from_content(content: str) -> Any:
+        pass
+
+    @classmethod
+    def load(cls, path_or_content: str) -> Any:
+        if not isinstance(path_or_content, str):
+            raise TypeError('Expected "path_or_content" to be of type str, got {}'.format(type(path_or_content)))
+        if cls._is_path(path_or_content):
+            logger.debug('Loaded settings from file at path: {}'.format(path_or_content))
+            return cls.from_path(path_or_content)
+        elif cls._is_content(path_or_content):
+            logger.debug('Loaded settings from string found in settings file env var')
+            return cls.from_content(path_or_content)
+        else:
+            raise SettingsLoadError('path or content could not be loaded using {}'.format(cls.__name__))
+
+    @classmethod
+    def _is_content(cls, path_or_content):
+        return any(path_or_content.lstrip().startswith(s) for s in cls.valid_content_start)
+
+    @classmethod
+    def _is_path(cls, path_or_content: str):
+        return (
+            os.path.isfile(path_or_content) and
+            (os.path.splitext(path_or_content)[1] in cls.valid_file_extensions)
+        )
+
+
+class YamlLoader(FileLoader):
+    """FileLoader for .yaml files."""
+    valid_file_extensions = ('.yml', '.yaml')
+    valid_content_start = ('---',)
+
+    @classmethod
+    def from_content(cls, content: str) -> Any:
+        return cls._load_yaml(content)
+
+    @classmethod
+    def from_path(cls, path: str) -> Any:
+        with open(path) as f:
+            return cls._load_yaml(f)
+
+    @staticmethod
+    def _load_yaml(stream: Any) -> Any:
+        if yaml is None:
+            raise ImportError('"pyyaml" package needs to be installed to parse yaml files.')
+        return yaml.safe_load(stream)
+
+
+class JsonLoader(FileLoader):
+    """FileLoader for .json files."""
+
+    valid_file_extensions = ('.json',)
+    valid_content_start = ('{',)
+
+    @classmethod
+    def from_content(cls, content: str) -> Any:
+        return json.loads(content)
+
+    @classmethod
+    def from_path(cls, path: str):
+        with open(path) as f:
+            return json.load(f)
+
+
+class TomlLoader(FileLoader):
+    """FileLoader for .toml files."""
+
+    valid_file_extensions = ('.toml', '.ini', '.config', '.cfg')
+    valid_content_start = ('[',)  # TODO: This only works if settings file has sections.
+
+    @classmethod
+    def from_content(cls, content: str) -> Any:
+        return toml.loads(content)
+
+    @classmethod
+    def from_path(cls, path: str):
+        with open(path) as f:
+            return toml.load(f)

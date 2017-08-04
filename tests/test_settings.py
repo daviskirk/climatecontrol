@@ -17,13 +17,16 @@ from climatecontrol import settings_parser, cli_utils  # noqa: E402
 
 
 def test_settings_empty(mock_empty_os_environ):
+    """Check that initializing empty settings works correctly."""
     settings_map = settings_parser.Settings()
     assert isinstance(settings_map, Mapping)
     assert dict(settings_map) == {}
+    assert str(settings_map)  # check that __repr__ works
 
 
 @pytest.mark.parametrize('update_on_init', [False, True, None])
 def test_settings(mock_os_environ, update_on_init):
+    """Check that initializing settings works correctly."""
     kwargs = {'prefix': 'TEST_STUFF'}
     if update_on_init is None:
         pass
@@ -39,6 +42,7 @@ def test_settings(mock_os_environ, update_on_init):
 
 
 def test_settings_parse(mock_os_environ):
+    """Check that parsing settings runs through without errors."""
     expected = {'bla': 'test'}
     parser = MagicMock()
     parser.return_value = expected
@@ -49,6 +53,12 @@ def test_settings_parse(mock_os_environ):
 
 
 def test_parse_from_file_vars(mock_os_environ, tmpdir):
+    """Check that the "from_file" extension works as expected.
+
+    Adding the "from_file" suffix should result in the variable being read from
+    the file and not directly.
+
+    """
     settings_map = settings_parser.Settings(update_on_init=False)
     filepath = tmpdir.join('testvarfile')
     filename = str(filepath)
@@ -61,12 +71,42 @@ def test_parse_from_file_vars(mock_os_environ, tmpdir):
 
 @pytest.mark.parametrize('settings_files', ['asd;kjhaflkjhasf', '.', '/home/', ['.', 'asd;kjhaflkjhasf']])
 def test_settings_files_fail(mock_empty_os_environ, settings_files):
+    """Check that passing invalid settings files really results in errors."""
     with pytest.raises(settings_parser.SettingsFileError):
         settings_parser.Settings(prefix='TEST_STUFF',
                                  settings_files='asdlijasdlkjaa')
 
 
+def test_yaml_import_fail(mock_empty_os_environ, monkeypatch):
+    """Check that uninstalled yaml really results in an error."""
+    # Check that without mocking everything is file:
+    settings_parser.Settings(prefix='TEST_STUFF', settings_files='---\na: 5')
+    # Now fake not having imported yaml
+    monkeypatch.setattr('climatecontrol.settings_parser.yaml', None)
+    with pytest.raises(ImportError):
+        settings_parser.Settings(prefix='TEST_STUFF', settings_files='---\na: 5')
+
+
+@pytest.mark.parametrize('settings_file_content', ['---\na:\n  b: 5\n', '{"a": {"b": 5}}', '[a]\nb=5'])
+def test_settings_file_content(mock_empty_os_environ, settings_file_content):
+    """Check parsing file content from different file types works."""
+    settings_map = settings_parser.Settings(prefix='TEST_STUFF', settings_files=settings_file_content)
+    assert dict(settings_map) == {'a': {'b': 5}}
+
+
+@pytest.mark.parametrize('settings_file_content,error', [
+    ('a:\n  b: 5\n', settings_parser.SettingsFileError),  # no file loader with "a" as valid start
+    ('[{"a": {"b": 5}}]', toml.TomlDecodeError),  # json must be object, seeing "[" assumes a toml file
+    ('b=5', settings_parser.SettingsFileError)  # toml file has to start with [ or it is not parsable
+])
+def test_settings_file_content_fail(mock_empty_os_environ, settings_file_content, error):
+    """Check parsing file content from different file types raises an error on incorrect file content."""
+    with pytest.raises(error):
+        settings_parser.Settings(prefix='TEST_STUFF', settings_files=settings_file_content)
+
+
 def test_settings_files_file(mock_empty_os_environ, mock_settings_file, tmpdir):
+    """Check that setting a the "settings_files" option works correctly."""
     settings_map = settings_parser.Settings(prefix='TEST_STUFF',
                                             settings_files=mock_settings_file[0])
     assert isinstance(settings_map, Mapping)
@@ -74,6 +114,7 @@ def test_settings_files_file(mock_empty_os_environ, mock_settings_file, tmpdir):
 
 
 def test_settings_files_files(mock_empty_os_environ, mock_settings_files, tmpdir):
+    """Check that setting multiple files as "settings_files" option works correctly."""
     settings_map = settings_parser.Settings(prefix='TEST_STUFF',
                                             settings_files=mock_settings_files[0])
     assert isinstance(settings_map, Mapping)
@@ -81,6 +122,7 @@ def test_settings_files_files(mock_empty_os_environ, mock_settings_files, tmpdir
 
 
 def test_settings_files_and_env_file(mock_os_environ, mock_settings_files, tmpdir):
+    """Check that using a settings file together with settings parsed from env variables works."""
     settings_map = settings_parser.Settings(
         prefix='TEST_STUFF',
         settings_files=mock_settings_files[0])
@@ -96,7 +138,7 @@ def test_settings_files_and_env_file(mock_os_environ, mock_settings_files, tmpdi
 
 
 def test_settings_files_and_env_file_and_env(mock_env_settings_file, tmpdir):
-    # os.environ['TEST_STUFF_SETTINGS_FILES'] = 'asdadad'
+    """Check that a settings file from an env variable works together with other env variables settings."""
     settings_map = settings_parser.Settings(prefix='TEST_STUFF')
     assert isinstance(settings_map, Mapping)
     assert dict(settings_map) == {
