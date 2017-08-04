@@ -1,8 +1,4 @@
-#!/usr/bin/env python
-
-"""
-Settings parser.
-"""
+"""Settings parser."""
 
 from abc import ABC, abstractmethod
 import os
@@ -30,7 +26,6 @@ logger = logging.getLogger(__name__)
 
 class SettingsValidationError(ValueError):
     """Failed to validate settings."""
-    pass
 
 
 class SettingsFileError(ValueError):
@@ -42,6 +37,66 @@ class SettingsLoadError(SettingsFileError):
 
 
 class Settings(Mapping):
+    """A Settings instance allows settings to be loaded from a settings file or environment variables.
+
+    Attributes:
+        settings_files: If set, a sequence of paths to settings files (toml
+            format) from which all settings are loaded. The files are
+            loaded one after another with variables set in later files
+            overwriting values set in previous files.
+        env_parser: `EnvParser` object handling the parsing of environment variables
+        filters: Allows the settings to be filtered depending on the passed
+            value. A string value will only use the settings section defined
+            by the string. A ``dict`` or ``Mapping`` allows the settings to
+            be limited to multiple sublevels.
+        parser: If given, defines a custom function to further process the
+            result of the settings. The function should take a single
+            nested dictionary argument (the settings map) as an argument
+            and output a nested dictionary.
+        preparsers: Sequence of preparsers (callables) to use. Note that
+            strings are assumed to be methods in the current class. Each
+            preprocessor must take a mapping as input and return a mapping
+            as output.
+        parse_order: Order in which options are parsed. If no
+            ``parse_order`` argument is given upon initialization, the
+            default order: ``("env", "env_file", "files", "external")`` is
+            used.
+        update_on_init: If set to `False` no parsing is performed upon
+            initialization of the object. You will need to call update
+            manually if you want load use any settings.
+
+    Args:
+        settings_files: See attribute
+        filters: See attribute
+        parser: See attribute
+        preparsers: See attribute
+        parse_order: See attribute
+        update_on_init: If set to ``True``, read all configurations upon initialization.
+        **env_parser_kwargs: Arguments passed to ``EnvParser`` constructor.
+
+    Example:
+        >>> import os
+        >>> os.environ['MY_APP_SECTION1_SUBSECTION1'] = 'test1'
+        >>> os.environ['MY_APP_SECTION2_SUBSECTION2'] = 'test2'
+        >>> os.environ['MY_APP_SECTION2_SUBSECTION3'] = 'test3'
+        >>> settings_map = Settings(prefix='MY_APP')
+        >>> dict(settings_map)
+        {'section1': {'subsection1': 'test1'}, 'section2': {'subsection2': 'test2', 'subsection3': 'test3'}}
+
+        Using filters we can conveniently promote a specific sections to the top level namespace
+
+        >>> dict(Settings(prefix='MY_APP', filters='section1'))
+        {'subsection1': 'test1'}
+
+        Or gather multiple sections into the same namespace (sometimes dangerous if the subsections are not unique)
+
+        >>> dict(Settings(prefix='MY_APP', filters=['section1', 'section2']))
+        {'subsection1': 'test1', 'subsection2': 'test2', 'subsection3': 'test3'}
+
+    See Also:
+        EnvParser
+
+    """
 
     def __init__(self,
                  settings_files: Optional[Sequence[str]] = None,
@@ -51,67 +106,7 @@ class Settings(Mapping):
                  preparsers: Sequence = ('parse_from_file_vars',),
                  update_on_init: bool = True,
                  **env_parser_kwargs) -> None:
-        """A Settings instance allows settings to be loaded from a settings file or
-        environment variables.
-
-        Attributes:
-            settings_files: If set, a sequence of paths to settings files (toml
-                format) from which all settings are loaded. The files are
-                loaded one after another with variables set in later files
-                overwriting values set in previous files.
-            env_parser: `EnvParser` object handling the parsing of environment variables
-            filters: Allows the settings to be filtered depending on the passed
-                value. A string value will only use the settings section defined
-                by the string. A ``dict`` or ``Mapping`` allows the settings to
-                be limited to multiple sublevels.
-            parser: If given, defines a custom function to further process the
-                result of the settings. The function should take a single
-                nested dictionary argument (the settings map) as an argument
-                and output a nested dictionary.
-            preparsers: Sequence of preparsers (callables) to use. Note that
-                strings are assumed to be methods in the current class. Each
-                preprocessor must take a mapping as input and return a mapping
-                as output.
-            parse_order: Order in which options are parsed. If no
-                ``parse_order`` argument is given upon initialization, the
-                default order: ``("env", "env_file", "files", "external")`` is
-                used.
-            update_on_init: If set to `False` no parsing is performed upon
-                initialization of the object. You will need to call update
-                manually if you want load use any settings.
-
-        Args:
-            settings_files: See attribute
-            filters: See attribute
-            parser: See attribute
-            preparsers: See attribute
-            parse_order: See attribute
-            update_on_init: If set to ``True``, read all configurations upon initialization.
-            **env_parser_kwargs: Arguments passed to ``EnvParser`` constructor.
-
-        Example:
-            >>> import os
-            >>> os.environ['MY_APP_SECTION1_SUBSECTION1'] = 'test1'
-            >>> os.environ['MY_APP_SECTION2_SUBSECTION2'] = 'test2'
-            >>> os.environ['MY_APP_SECTION2_SUBSECTION3'] = 'test3'
-            >>> settings_map = Settings(prefix='MY_APP')
-            >>> dict(settings_map)
-            {'section1': {'subsection1': 'test1'}, 'section2': {'subsection2': 'test2', 'subsection3': 'test3'}}
-
-            Using filters we can conveniently promote a specific sections to the top level namespace
-
-            >>> dict(Settings(prefix='MY_APP', filters='section1'))
-            {'subsection1': 'test1'}
-
-            Or gather multiple sections into the same namespace (sometimes dangerous if the subsections are not unique)
-
-            >>> dict(Settings(prefix='MY_APP', filters=['section1', 'section2']))
-            {'subsection1': 'test1', 'subsection2': 'test2', 'subsection3': 'test3'}
-
-        See Also:
-            EnvParser
-
-        """
+        """Initialize settings object."""
         self.env_parser = EnvParser(**(env_parser_kwargs or {}))
         self.parser = parser
         self.preparsers = preparsers
@@ -137,10 +132,12 @@ class Settings(Mapping):
 
     @property
     def parse_order(self) -> Tuple[str, ...]:
+        """Return which options to use first when parsing settings."""
         return self._parse_order
 
     @parse_order.setter
     def parse_order(self, parse_order: Sequence[str]) -> None:
+        """Set which options to use first when parsing settings."""
         parse_options = self._parse_option_fcn_map.keys()
         if parse_order:
             if len(parse_order) != len(parse_options) or set(parse_order) != set(parse_options):
@@ -152,20 +149,24 @@ class Settings(Mapping):
 
     @property
     def parser(self) -> Callable:
+        """Return settings parser function."""
         return self._parse
 
     @parser.setter
     def parser(self, value: Optional[Callable]) -> None:
+        """Set the settings parser function."""
         if value and not callable(value):
             raise TypeError('If given, ``parser`` must be a callable')
         self._parse = value
 
     @property
     def preparsers(self) -> Tuple[Callable, ...]:
+        """Return current preparser functions."""
         return self._preparsers
 
     @preparsers.setter
     def preparsers(self, preparsers: Sequence) -> None:
+        """Set parsers that should be used before actual call to the main "parse" method."""
         parsed_preparsers = []
         for preparser in preparsers:
             if isinstance(preparser, str):
@@ -175,10 +176,12 @@ class Settings(Mapping):
 
     @property
     def settings_files(self) -> Sequence:
+        """Return current settings files."""
         return self._settings_files
 
     @settings_files.setter
     def settings_files(self, files: Sequence) -> None:
+        """Set settings files to use when parsing settings."""
         files = files or ()
         if isinstance(files, str):
             files = (files,)
@@ -193,7 +196,8 @@ class Settings(Mapping):
             ('external', lambda: self.external_data)
         ])
 
-    def get_configuration_file(self, save_to=None):
+    def get_configuration_file(self, save_to=None) -> str:
+        """Generate a settings file from the current settings."""
         default_str = toml.dumps(OrderedDict(sorted(self._data.items())))
         default_str = default_str.replace('\n[', '\n\n[')
         if save_to:
@@ -203,7 +207,7 @@ class Settings(Mapping):
             return default_str
 
     def update(self, d: Optional[Union[Mapping, Dict]] = None, clear_external: bool = False) -> None:
-        """Updates object settings and reload files and environment variables.
+        """Update object settings and reload files and environment variables.
 
         Args:
             d: Updates for settings. This is equivilant to `dict.update` except
@@ -238,6 +242,7 @@ class Settings(Mapping):
         self._data = self.parse(settings_map)
 
     def parse(self, data) -> Dict:
+        """Parse data into settings."""
         for preparser in self.preparsers:
             data = preparser(data)
 
@@ -247,9 +252,11 @@ class Settings(Mapping):
             return data
 
     def setup_logging(self, logging_section='logging'):
-        """Initialize logging. Uses the ``'logging'`` section from the global
-        ``SETTINGS`` object if available. Otherwise uses sane defaults provided by
-        the ``climatecontrol`` package
+        """Initialize logging.
+
+        Uses the ``'logging'`` section from the global ``SETTINGS`` object if
+        available. Otherwise uses sane defaults provided by the
+        ``climatecontrol`` package.
 
         """
         logging_settings = deepcopy(DEFAULT_LOG_SETTINGS)
@@ -259,10 +266,11 @@ class Settings(Mapping):
         logging_config.dictConfig(logging_settings)
 
     def subtree(self, data: Dict) -> Dict:
+        """See :func:`subtree`."""
         return subtree(data, self.filters, parent_hierarchy=['settings'])
 
     def click_settings_file_option(self, **kw) -> Callable:
-        """See `cli_utils.click_settings_file_option`"""
+        """See :func:`cli_utils.click_settings_file_option`."""
         from . import cli_utils
         return cli_utils.click_settings_file_option(self, **kw)
 
@@ -275,6 +283,7 @@ class Settings(Mapping):
         return file_settings_map
 
     def parse_from_file_vars(self, data: Any, postfix_trigger='_from_file') -> Any:
+        """Parse settings from environment variables."""
         if not data:
             return data
         elif isinstance(data, Mapping):
@@ -301,7 +310,7 @@ EnvSetting = NamedTuple('EnvSetting', [('name', str), ('value', Mapping[str, Any
 
 
 class EnvParser:
-    """Environment variable parser
+    r"""Environment variable parser.
 
     Args:
         prefix: Only environment variables which start with this string
@@ -327,7 +336,6 @@ class EnvParser:
         settings_file_env_var: Name of the settings file environment variable. Is constructed automatically.
 
     Examples:
-
         >>> env_parser = EnvParser(prefix='THIS_EXAMPLE')
         >>>
         >>> with os.open('settings.toml', 'w') as f:
@@ -340,6 +348,7 @@ class EnvParser:
         {'testgroup': {'testvar': 27, 'othervar': 345}}
 
     """
+
     escape_placeholder = '$$$$'
 
     def __init__(self,
@@ -348,6 +357,7 @@ class EnvParser:
                  max_depth: int = 1,
                  settings_file_suffix: str = 'SETTINGS_FILE',
                  exclude: Sequence[str] = ()) -> None:
+        """Initialize object."""
         self.settings_file_suffix = str(settings_file_suffix)
         self.max_depth = int(max_depth)
         self.split_char = split_char
@@ -356,45 +366,55 @@ class EnvParser:
 
     @property
     def exclude(self) -> Set[str]:
+        """Return excluded environment variables."""
         exclude = self._exclude.union({self.settings_file_env_var})
         return set(s.lower() for s in exclude)
 
     @exclude.setter
     def exclude(self, exclude: Sequence = ()) -> None:
+        """Set excluded environment variables."""
         if isinstance(exclude, str):
             exclude = (exclude,)
         self._exclude = set(exclude)
 
     @property
     def prefix(self) -> str:
+        """Return prefix used to filter used environment variables."""
         return self._build_env_var(self._prefix) + self.split_char
 
     @prefix.setter
     def prefix(self, value: str):
+        """Set prefix used to filter used environment variables."""
         self._prefix = str(value)
 
     @property
     def settings_file_env_var(self) -> str:
+        """Return environment variable used to indicate a path to a settings file."""
         return self._build_env_var(self.prefix, self.settings_file_suffix)
 
     @settings_file_env_var.setter
     def settings_file_env_var(self, value: str):
+        """Set environment variable used to indicate a path to a settings file."""
         raise AttributeError('Can\'t set `settings_file_env_var` directly. Set `settings_file_suffix` instead.')
 
     @property
     def split_char(self) -> str:
+        """Return character used to split sections."""
         return self._split_char
 
     @split_char.setter
     def split_char(self, char: str) -> None:
+        """Set character used to split sections."""
         char = str(char)
         if len(char) != 1:
             raise ValueError('``split_char`` must be a single character')
         self._split_char = str(char)
 
     def parse(self, include_vars=True, include_file: bool = True) -> Dict[str, Any]:
-        """Convert environment variables to nested dict. Note that all string inputs
-        are case insensitive and all resulting keys are lower case.
+        """Convert environment variables to nested dict.
+
+        Note that all string inputs are case insensitive and all resulting keys
+        are lower case.
 
         Args:
             include_file: If set to ``True`` also parses the settings file if found.
@@ -420,7 +440,7 @@ class EnvParser:
         return self.split_char.join(p.strip(self.split_char).upper() for p in parts)
 
     def _escape(self, s: str, *, inverse: bool = False) -> str:
-        """Escape environment variables split char by parsing out double chars
+        """Escape environment variables split char by parsing out double chars.
 
         Examples:
             >>> 'bla_bla__this
@@ -434,7 +454,7 @@ class EnvParser:
         return s.replace(args[0], args[1])
 
     def _iter_parse(self, include_vars: bool = True, include_file: bool = True) -> Iterator[EnvSetting]:
-        """Used in ``parse``"""
+        """Use in ``parse``."""
         if include_vars:
             for env_var in os.environ:
                 env_var_low = env_var.lower()
@@ -473,9 +493,15 @@ class EnvParser:
 
 
 def read_file(path_or_content: str, raise_error: bool = False) -> Dict[str, Any]:
-    """Reads toml file. If ``path_or_content`` is a valid filename, load the file.
-    If ``path_or_content`` represents a toml string instead (for example the
+    """Read settings file.
+
+    If ``path_or_content`` is a valid filename, load the file. If
+    ``path_or_content`` represents a toml string instead (for example the
     contents of a toml file), parse the string directly.
+
+    Note that toml, yaml and json files are read. If ``path_or_content`` is a
+    string, we will try to guess what file type you meant. Note that this last
+    feature is not perfect!
 
     Args:
         path_or_content: Path to file or file contents
@@ -510,6 +536,7 @@ def read_file(path_or_content: str, raise_error: bool = False) -> Dict[str, Any]
 def subtree(data: Union[Dict, Mapping],
             filters: Optional[Union[str, Mapping, Iterable]] = None,
             parent_hierarchy: Iterable = ()) -> Any:
+    """Extract a sub-dictionary from subtrees using filters."""
     if not parent_hierarchy:
         parent_hierarchy = []
     else:
@@ -543,7 +570,7 @@ def subtree(data: Union[Dict, Mapping],
 
 
 def update_nested(d: Dict, u: Mapping) -> Dict:
-    """Updates nested mapping ``d`` with nested mapping u"""
+    """Update nested mapping ``d`` with nested mapping ``u``."""
     for k, v in u.items():
         if isinstance(v, Mapping):
             r = update_nested(d.get(k, {}), v)
@@ -561,17 +588,19 @@ class FileLoader(ABC):
 
     @classmethod
     @abstractmethod
-    def from_path(path: str) -> Any:
-        """Load content from file at path"""
+    def from_path(cls, path: str) -> Any:
+        """Load serialized data from file at path."""
         pass
 
     @classmethod
     @abstractmethod
-    def from_content(content: str) -> Any:
+    def from_content(cls, content: str) -> Any:
+        """Load serialized data from content."""
         pass
 
     @classmethod
     def load(cls, path_or_content: str) -> Any:
+        """Load serialized data from file at path or from content."""
         if not isinstance(path_or_content, str):
             raise TypeError('Expected "path_or_content" to be of type str, got {}'.format(type(path_or_content)))
         if cls._is_path(path_or_content):
@@ -585,10 +614,12 @@ class FileLoader(ABC):
 
     @classmethod
     def _is_content(cls, path_or_content):
+        """Check if argument is file content."""
         return any(path_or_content.lstrip().startswith(s) for s in cls.valid_content_start)
 
     @classmethod
     def _is_path(cls, path_or_content: str):
+        """Check if argument is a file path."""
         return (
             os.path.isfile(path_or_content) and
             (os.path.splitext(path_or_content)[1] in cls.valid_file_extensions)
@@ -597,20 +628,24 @@ class FileLoader(ABC):
 
 class YamlLoader(FileLoader):
     """FileLoader for .yaml files."""
+
     valid_file_extensions = ('.yml', '.yaml')
     valid_content_start = ('---',)
 
     @classmethod
     def from_content(cls, content: str) -> Any:
+        """Load data from yaml formatted string."""
         return cls._load_yaml(content)
 
     @classmethod
     def from_path(cls, path: str) -> Any:
+        """Load data from path containing a yaml file."""
         with open(path) as f:
             return cls._load_yaml(f)
 
     @staticmethod
     def _load_yaml(stream: Any) -> Any:
+        """Load yaml if yaml library is available."""
         if yaml is None:
             raise ImportError('"pyyaml" package needs to be installed to parse yaml files.')
         return yaml.safe_load(stream)
@@ -624,10 +659,12 @@ class JsonLoader(FileLoader):
 
     @classmethod
     def from_content(cls, content: str) -> Any:
+        """Load json from string."""
         return json.loads(content)
 
     @classmethod
     def from_path(cls, path: str):
+        """Load json from file at path."""
         with open(path) as f:
             return json.load(f)
 
@@ -640,9 +677,11 @@ class TomlLoader(FileLoader):
 
     @classmethod
     def from_content(cls, content: str) -> Any:
+        """Load toml from string."""
         return toml.loads(content)
 
     @classmethod
     def from_path(cls, path: str):
+        """Load toml from file at path."""
         with open(path) as f:
             return toml.load(f)

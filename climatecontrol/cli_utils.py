@@ -1,8 +1,4 @@
-#!/usr/bin/env python
-
-"""
-CLI utils for easy command line extras.
-"""
+"""CLI utils for easy command line extras."""
 
 import click
 from . import settings_parser
@@ -10,7 +6,7 @@ from . import settings_parser
 
 def click_settings_file_option(settings_obj: settings_parser.Settings,
                                click_obj=click, option_name='settings', **kw):
-    """Convenience function for building a `click` option decorator
+    """Build a `click` option decorator.
 
     Args:
         settings_obj: settings object to load configuration into.

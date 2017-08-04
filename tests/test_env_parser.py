@@ -1,8 +1,4 @@
-#!/usr/bin/env python
-
-"""
-Test settings.
-"""
+"""Test settings."""
 
 import sys
 import os
@@ -17,6 +13,7 @@ from climatecontrol import settings_parser  # noqa: E402
     ('settings_file_env_var', 'wrongval', None),
 ])
 def test_env_parser_assign(mock_empty_os_environ, attr, value, expected):
+    """Check that we can assign attributes of env parser."""
     s = settings_parser.EnvParser(prefix='this', settings_file_suffix='suffix')
     assert s.prefix == 'THIS_'
     assert s.settings_file_suffix == 'suffix'
@@ -40,6 +37,7 @@ def test_env_parser_assign(mock_empty_os_environ, attr, value, expected):
     ('TEST_STUFFING', 1, '_', {}),
 ])
 def test_parse_environment_vars(mock_os_environ, prefix, max_depth, split_char, expected):
+    """Check that we can parse settings from variables."""
     env_parser = settings_parser.EnvParser(
         prefix=prefix,
         max_depth=max_depth,
@@ -111,6 +109,7 @@ def test_parse_environment_vars(mock_os_environ, prefix, max_depth, split_char, 
 
 ])
 def test_parse_toml(monkeypatch, max_depth, environ, expected):
+    """Check that we can parse toml from environment variables."""
     monkeypatch.setattr(os, 'environ', environ)
     env_parser = settings_parser.EnvParser(prefix='TEST_STUFF', max_depth=max_depth)
     result = env_parser.parse()

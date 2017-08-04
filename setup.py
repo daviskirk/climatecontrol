@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 
-"""
-Module docstring.
-"""
+"""Setup climatecontrol."""
 
 import os
 import sys
@@ -25,7 +23,9 @@ rootdir = os.path.abspath(os.path.dirname(__file__))
 
 
 def read(fname):
-    """Utility function to read the README file. Used for the long_description.
+    """Read a file from path.
+
+    Utility function to read the README file. Used for the long_description.
     It's nice, because now 1) we have a top level README file and 2) it's
     easier to type in the README file than to put a raw string in below ...
 
@@ -34,17 +34,21 @@ def read(fname):
 
 
 class Typecheck(Command):
+    """Command for easy mypy usage."""
 
     user_options = [('mypy-args=', 'a', 'mypy args')]
     description = "Install and run mypy typechecker"
 
     def initialize_options(self):
+        """Init mypy options."""
         self.mypy_args = ''
 
     def finalize_options(self):
+        """Finalize mypy options."""
         pass
 
     def run(self):
+        """Run mypy command."""
         # import here, cause outside the eggs aren't loaded
         from subprocess import call
         bin_path = os.path.join(os.path.abspath(os.path.dirname(sys.executable)), 'mypy')

@@ -1,8 +1,4 @@
-#!/usr/bin/env python
-
-"""
-Logging utilities.
-"""
+"""Logging utilities."""
 
 import logging
 import logging.config as logging_config
@@ -42,7 +38,7 @@ def setup_logging(settings_file: Optional[str] = None,
                   env_prefix: str = 'APP_SETTINGS',
                   settings_file_suffix: str = 'SETTINGS_FILE',
                   logging_section: str = 'LOGGING') -> None:
-    """Configure logging
+    """Configure logging.
 
     args:
         settings_file: pass to `settings_parser.Settings`
@@ -50,13 +46,12 @@ def setup_logging(settings_file: Optional[str] = None,
         settings_file_suffix: passed to `settings_parser.Settings`
         logging_section: string indicating what section of the configuration should be used as logging settings.
     """
-
     from .settings_parser import Settings, update_nested
 
     using_custom = False
 
     def parse(data: Dict) -> Dict:
-        """Parse logging configuration data"""
+        """Parse logging configuration data."""
         default_settings = deepcopy(DEFAULT_LOG_SETTINGS)
         logging_settings = data.get(logging_section.lower(), {})
         nonlocal using_custom

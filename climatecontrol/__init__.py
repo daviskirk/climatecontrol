@@ -1,9 +1,7 @@
-#!/usr/bin/env python
+"""CLIMATECONTROL controls your apps configuration environment.
 
-"""
-CLIMATECONTROL controls your apps configuration environment. It is a Python
-library for loading app configurations from files and/or namespaced environment
-variables.
+It is a Python library for loading app configurations from files and/or
+namespaced environment variables.
 
 :licence: MIT, see LICENSE file for more details.
 

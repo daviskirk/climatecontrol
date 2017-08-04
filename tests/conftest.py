@@ -1,8 +1,4 @@
-#!/usr/bin/env python
-
-"""
-Test settings.
-"""
+"""Test settings."""
 
 import sys
 import os
@@ -16,6 +12,7 @@ from climatecontrol import settings_parser  # noqa: E402
 
 @pytest.fixture
 def mock_os_environ(monkeypatch):
+    """Mock os environment and set a few settings with environment variables."""
     mock_environ = {
         'test_stuff': 2,
         'TEST_STUFF': 5,
@@ -28,17 +25,20 @@ def mock_os_environ(monkeypatch):
 
 @pytest.fixture
 def mock_empty_os_environ(monkeypatch):
+    """Mock os environment so it seems completely empty."""
     mock_environ = {}
     monkeypatch.setattr(os, 'environ', mock_environ)
 
 
 @pytest.fixture
 def mock_settings_prefix(monkeypatch):
+    """Mock default settings prefix."""
     monkeypatch.setattr(settings_parser.Settings, 'prefix', 'TEST_STUFF')
 
 
 @pytest.fixture(params=['.toml', '.yml', '.json'])
 def mock_settings_file(request, monkeypatch, tmpdir):
+    """Temporarily write a settings file and return the filepath and the expected settings outcome."""
     p = tmpdir.mkdir('sub').join('settings' + request.param)
     s = """
     [testgroup]
@@ -69,6 +69,7 @@ def mock_settings_file(request, monkeypatch, tmpdir):
 
 @pytest.fixture
 def mock_settings_files(monkeypatch, tmpdir, mock_settings_file):
+    """Temporarily write multiple settings file and return the filepaths and the expected settings outcome."""
     subdir = tmpdir.mkdir('sub2')
     p1 = subdir.join('settings.toml')
     s = """
@@ -100,10 +101,12 @@ def mock_settings_files(monkeypatch, tmpdir, mock_settings_file):
 
 @pytest.fixture
 def mock_env_settings_file(mock_os_environ, mock_settings_file):
+    """Set the settings file env variable to a temporary settings file."""
     os.environ['TEST_STUFF_SETTINGS_FILE'] = mock_settings_file[0]
     return mock_settings_file
 
 
 @pytest.fixture
 def mock_env_parser(mocker):
+    """Mock out environment variable parser."""
     return mocker.patch('climatecontrol.settings_parser.EnvParser')

@@ -1,8 +1,4 @@
-#!/usr/bin/env python
-
-"""
-Test logging.
-"""
+"""Test logging."""
 
 import sys
 import os
@@ -15,7 +11,7 @@ from climatecontrol import logtools  # noqa: E402
 
 
 def test_logging(monkeypatch, tmpdir):
-
+    """Check that setting up logging works."""
     with io.StringIO() as buf, redirect_stderr(buf):
         # monkeypatch(settings_parser.Settings, )
         logger = logging.getLogger('test_logging_logger')

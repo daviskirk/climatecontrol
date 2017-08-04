@@ -1,8 +1,4 @@
-#!/usr/bin/env python
-
-"""
-Test settings.
-"""
+"""Test settings."""
 
 import click
 from click.testing import CliRunner
@@ -159,6 +155,7 @@ def test_settings_files_and_env_file_and_env(mock_env_settings_file, tmpdir):
     (('external', 'env_file', 'files', 'env'), {'testgroup': {'testvar': 'env'}})
 ])
 def test_settings_parsing_order(tmpdir, order, expected):
+    """Check that parsing order can be changed."""
     os.environ['TEST_STUFF_TESTGROUP_TESTVAR'] = 'env'
     os.environ['TEST_STUFF_SETTINGS_FILE'] = '[testgroup]\ntestvar = "env_file"'
     subdir = tmpdir.mkdir('order_subdir')
@@ -174,6 +171,7 @@ def test_settings_parsing_order(tmpdir, order, expected):
 
 
 def mock_parser_fcn(s):
+    """Return input instead of doing some complex parsing."""
     return s
 
 
@@ -183,6 +181,7 @@ def mock_parser_fcn(s):
     ('parser', mock_parser_fcn, mock_parser_fcn)
 ])
 def test_assign(mock_empty_os_environ, mock_env_parser, attr, value, expected):
+    """Test that assigning attributes on settings object works."""
     s = settings_parser.Settings(prefix='this', settings_file_suffix='suffix', parser=None)
     assert s.settings_files == []
     setattr(s, attr, value)
@@ -193,7 +192,7 @@ def test_assign(mock_empty_os_environ, mock_env_parser, attr, value, expected):
     'dict', 'envvar', 'both'
 ])
 def test_update(mock_empty_os_environ, mode):
-    """Test if updating settings after initialization works"""
+    """Test if updating settings after initialization works."""
     os.environ['THIS_SECTION_MY_VALUE'] = 'original'
     s = settings_parser.Settings(prefix='this', settings_file_suffix='suffix', parser=None)
     original = dict(s)
@@ -213,7 +212,7 @@ def test_update(mock_empty_os_environ, mode):
 
 
 def test_filters(mock_empty_os_environ):
-    """test filter functionality based on docstring example"""
+    """Test filter functionality based on docstring example."""
     os.environ.update(dict(
         MY_APP_SECTION1_SUBSECTION1='test1',
         MY_APP_SECTION2_SUBSECTION2='test2',
@@ -227,7 +226,8 @@ def test_filters(mock_empty_os_environ):
 @pytest.mark.parametrize('use_method', [True, False])
 @pytest.mark.parametrize('option_name', ['config', 'settings'])
 @pytest.mark.parametrize('mode', ['config', 'noconfig', 'wrongfile', 'noclick'])
-def test_cli_utils1(mock_empty_os_environ, mock_settings_file, mode, option_name, use_method):
+def test_cli_utils(mock_empty_os_environ, mock_settings_file, mode, option_name, use_method):
+    """Check that cli utils work."""
     settings_map = settings_parser.Settings(prefix='TEST_STUFF')
     assert settings_map._data == {}
 
@@ -264,7 +264,7 @@ def test_cli_utils1(mock_empty_os_environ, mock_settings_file, mode, option_name
 
 
 def test_get_configuration_file(mock_empty_os_environ, mock_settings_file, tmpdir):
-    """Test writing out an example configuration file"""
+    """Test writing out an example configuration file."""
     settings_file_path, expected = mock_settings_file
     settings_map = settings_parser.Settings(prefix='TEST_STUFF',
                                             settings_files=settings_file_path)
