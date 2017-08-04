@@ -196,13 +196,14 @@ class Settings(Mapping):
             ('external', lambda: self.external_data)
         ])
 
-    def get_configuration_file(self, save_to=None) -> str:
+    def get_configuration_file(self, save_to=None) -> Optional[str]:
         """Generate a settings file from the current settings."""
         default_str = toml.dumps(OrderedDict(sorted(self._data.items())))
         default_str = default_str.replace('\n[', '\n\n[')
         if save_to:
             with open(save_to, 'w') as f:
                 f.write(default_str)
+            return None
         else:
             return default_str
 
