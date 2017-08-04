@@ -127,7 +127,7 @@ Settings file support
 
 If you don't want to use an environment variable for every single setting and
 want to put your settings in a single file instead you can to this as well.
-Settings files need to be in toml_ format right now.
+Settings files can be toml_ files (`.toml`), yaml files (`.yml`) or json files (`.json`).
 
 .. code:: sh
 
