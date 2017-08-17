@@ -48,7 +48,9 @@ def test_settings_parse(mock_os_environ):
     assert dict(settings_map) == expected
 
 
-def test_parse_from_file_vars(mock_os_environ, tmpdir):
+@pytest.mark.parametrize('original', [False, True])
+@pytest.mark.parametrize('file_exists', [False, True])
+def test_parse_from_file_vars(original, file_exists, mock_os_environ, tmpdir):
     """Check that the "from_file" extension works as expected.
 
     Adding the "from_file" suffix should result in the variable being read from
@@ -58,11 +60,21 @@ def test_parse_from_file_vars(mock_os_environ, tmpdir):
     settings_map = settings_parser.Settings(update_on_init=False)
     filepath = tmpdir.join('testvarfile')
     filename = str(filepath)
-    with open(filename, 'w') as f:
-        f.write('apassword\n')
-    settings_map.update({'this_var_from_file': filename})
+    if file_exists:
+        with open(filename, 'w') as f:
+            f.write('apassword\n')
+    update_dict = {'this_var_from_file': filename}
+    if original:
+        update_dict['this_var'] = 'the original password'
+    settings_map.update(update_dict)
     assert isinstance(settings_map, Mapping)
-    assert dict(settings_map) == {'this_var': 'apassword'}
+    actual = dict(settings_map)
+    expected = {}
+    if original:
+        expected = {'this_var': 'the original password'}
+    if file_exists:
+        expected = {'this_var': 'apassword'}
+    assert actual == expected
 
 
 @pytest.mark.parametrize('settings_files', ['asd;kjhaflkjhasf', '.', '/home/', ['.', 'asd;kjhaflkjhasf']])

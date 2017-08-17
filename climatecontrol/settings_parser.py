@@ -297,11 +297,16 @@ class Settings(Mapping):
             return data
         for k, v in items:
             if isinstance(v, str) and isinstance(k, str) and k.lower().endswith(postfix_trigger):
-                with open(v) as f:
-                    v_from_file = f.read().rstrip()
-                del new_data[k]
-                new_data[k[:-len(postfix_trigger)]] = v_from_file
-            elif isinstance(v, (Mapping, Sequence)):
+                try:
+                    with open(v) as f:
+                        v_from_file = f.read().rstrip()
+                except FileNotFoundError as e:
+                    logger.info('Error while trying to load variable from file: %s. Skipping...', e)
+                else:
+                    new_data[k[:-len(postfix_trigger)]] = v_from_file
+                finally:
+                    del new_data[k]
+            elif isinstance(v, (Mapping, Sequence)) and not isinstance(v, str):
                 parsed_v = self.parse_from_file_vars(v)
                 new_data[k] = parsed_v
         return new_data
