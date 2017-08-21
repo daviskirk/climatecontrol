@@ -130,7 +130,10 @@ def test_settings_files_files(mock_empty_os_environ, mock_settings_files, tmpdir
 
 
 def test_settings_files_and_env_file(mock_os_environ, mock_settings_files, tmpdir):
-    """Check that using a settings file together with settings parsed from env variables works."""
+    """Check that using a settings file together with settings parsed from env variables works.
+
+    In the default case environment vars should override settings file vars.
+    """
     settings_map = settings_parser.Settings(
         prefix='TEST_STUFF',
         settings_files=mock_settings_files[0])
@@ -138,7 +141,7 @@ def test_settings_files_and_env_file(mock_os_environ, mock_settings_files, tmpdi
     assert dict(settings_map) == {
         'testgroup': {
             'test_var': 6,
-            'testvar': 123
+            'testvar': 7
         }, 'othergroup': {
             'blabla': 555
         }
@@ -146,12 +149,16 @@ def test_settings_files_and_env_file(mock_os_environ, mock_settings_files, tmpdi
 
 
 def test_settings_files_and_env_file_and_env(mock_env_settings_file, tmpdir):
-    """Check that a settings file from an env variable works together with other env variables settings."""
+    """Check that a settings file from an env variable works together with other env variables settings.
+
+    For default settings env > env_file > settings file.
+
+    """
     settings_map = settings_parser.Settings(prefix='TEST_STUFF')
     assert isinstance(settings_map, Mapping)
     assert dict(settings_map) == {
         'testgroup': {
-            'testvar': 123,
+            'testvar': 7,
             'test_var': 6
         }, 'othergroup': {
             'blabla': 555

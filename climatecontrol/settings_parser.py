@@ -59,8 +59,8 @@ class Settings(Mapping):
             as output.
         parse_order: Order in which options are parsed. If no
             ``parse_order`` argument is given upon initialization, the
-            default order: ``("env", "env_file", "files", "external")`` is
-            used.
+            default order: ``("files", "env_file", "env", "external")`` is
+            used. Entries later in the order will overwrite earlier entries.
         update_on_init: If set to `False` no parsing is performed upon
             initialization of the object. You will need to call update
             manually if you want load use any settings.
@@ -190,9 +190,9 @@ class Settings(Mapping):
     @property
     def _parse_option_fcn_map(self) -> OrderedDict:
         return OrderedDict([
-            ('env', partial(self.env_parser.parse, include_file=False)),
-            ('env_file', partial(self.env_parser.parse, include_vars=False)),
             ('files', self._parse_files),
+            ('env_file', partial(self.env_parser.parse, include_vars=False)),
+            ('env', partial(self.env_parser.parse, include_file=False)),
             ('external', lambda: self.external_data)
         ])
 
