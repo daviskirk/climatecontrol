@@ -493,7 +493,10 @@ class EnvParser:
     def _get_env_var_value(env_var: str) -> Any:
         v = os.environ[env_var]
         try:
-            return toml._load_value(v)[0]
+            if toml._load_value.__code__.co_argcount == 1:
+                return toml._load_value(v)[0]  # for toml version < 0.9.3
+            else:
+                return toml._load_value(v, dict)[0]
         except (ValueError, TypeError, IndexError, toml.TomlDecodeError):
             return v
 
