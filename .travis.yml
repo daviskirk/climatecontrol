@@ -3,7 +3,7 @@ python:
   - 3.5
   - 3.6
 install:
-  - pip install coveralls mypy flake8 flake8-docstrings pyyaml
+  - pip install coveralls mypy==0.550 flake8==3.5.0 flake8-docstrings==1.1.0 pyyaml
 script:
   - flake8
   - python setup.py typecheck

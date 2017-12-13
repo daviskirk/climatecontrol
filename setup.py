@@ -15,8 +15,8 @@ requirements = [
 test_requirements = [
     'click',
     'pytest-mock',
-    'pytest-cov',
-    'pytest'
+    'pytest-cov>=2.5.1',
+    'pytest>=3.2.1'
 ]
 
 rootdir = os.path.abspath(os.path.dirname(__file__))
