@@ -33,7 +33,7 @@ def test_settings(mock_os_environ, update_on_init):
     if update_on_init is False:
         expected = {}
     else:
-        expected = {'testgroup': {'testvar': 7, 'test_var': 6}}
+        expected = {'testgroup': {'testvar': 7, 'test_var': 6}, 'testgroup_test_var': 9}
     assert dict(settings_map) == expected
 
 
@@ -144,7 +144,8 @@ def test_settings_files_and_env_file(mock_os_environ, mock_settings_files, tmpdi
             'testvar': 7
         }, 'othergroup': {
             'blabla': 555
-        }
+        },
+        'testgroup_test_var': 9
     }
 
 
@@ -162,7 +163,8 @@ def test_settings_files_and_env_file_and_env(mock_env_settings_file, tmpdir):
             'test_var': 6
         }, 'othergroup': {
             'blabla': 555
-        }
+        },
+        'testgroup_test_var': 9
     }
 
 
@@ -175,7 +177,7 @@ def test_settings_files_and_env_file_and_env(mock_env_settings_file, tmpdir):
 ])
 def test_settings_parsing_order(tmpdir, order, expected):
     """Check that parsing order can be changed."""
-    os.environ['TEST_STUFF_TESTGROUP_TESTVAR'] = 'env'
+    os.environ['TEST_STUFF_TESTGROUP__TESTVAR'] = 'env'
     os.environ['TEST_STUFF_SETTINGS_FILE'] = '[testgroup]\ntestvar = "env_file"'
     subdir = tmpdir.mkdir('order_subdir')
     p = subdir.join('settings.toml')
@@ -212,7 +214,7 @@ def test_assign(mock_empty_os_environ, mock_env_parser, attr, value, expected):
 ])
 def test_update(mock_empty_os_environ, mode):
     """Test if updating settings after initialization works."""
-    os.environ['THIS_SECTION_MY_VALUE'] = 'original'
+    os.environ['THIS_SECTION__MY_VALUE'] = 'original'
     s = settings_parser.Settings(prefix='this', settings_file_suffix='suffix', parser=None)
     original = dict(s)
     assert original == {'section': {'my_value': 'original'}}
@@ -224,7 +226,7 @@ def test_update(mock_empty_os_environ, mode):
     else:
         update = None
     if mode in ['envvar', 'both']:
-        os.environ['THIS_SECTION2_NEW_ENV_VALUE'] = 'new_env_data'
+        os.environ['THIS_SECTION2__NEW_ENV_VALUE'] = 'new_env_data'
         expected.update({'section2': {'new_env_value': 'new_env_data'}})
     s.update(update)
     assert dict(s) == expected
@@ -233,9 +235,9 @@ def test_update(mock_empty_os_environ, mode):
 def test_filters(mock_empty_os_environ):
     """Test filter functionality based on docstring example."""
     os.environ.update(dict(
-        MY_APP_SECTION1_SUBSECTION1='test1',
-        MY_APP_SECTION2_SUBSECTION2='test2',
-        MY_APP_SECTION2_SUBSECTION3='test3',
+        MY_APP_SECTION1__SUBSECTION1='test1',
+        MY_APP_SECTION2__SUBSECTION2='test2',
+        MY_APP_SECTION2__SUBSECTION3='test3',
         MY_APP_SECTION3='not_captured',
     ))
     settings_map = settings_parser.Settings(prefix='MY_APP', filters=['section1', {'section2': '*'}])

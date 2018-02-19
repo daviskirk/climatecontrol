@@ -3,9 +3,7 @@
 """Setup climatecontrol."""
 
 import os
-import sys
 from setuptools import setup
-from setuptools import Command
 
 requirements = [
     'toml>=0.9.2',
@@ -31,39 +29,6 @@ def read(fname):
 
     """
     return open(os.path.join(rootdir, fname)).read()
-
-
-class Typecheck(Command):
-    """Command for easy mypy usage."""
-
-    user_options = [('mypy-args=', 'a', 'mypy args')]
-    description = "Install and run mypy typechecker"
-
-    def initialize_options(self):
-        """Init mypy options."""
-        self.mypy_args = ''
-
-    def finalize_options(self):
-        """Finalize mypy options."""
-        pass
-
-    def run(self):
-        """Run mypy command."""
-        # import here, cause outside the eggs aren't loaded
-        from subprocess import call
-        bin_path = os.path.join(os.path.abspath(os.path.dirname(sys.executable)), 'mypy')
-        if not os.path.isfile(bin_path):
-            raise RuntimeError((
-                'mypy must be installed before typecheck can be preformed.'
-                'Try running:\n'
-                'pip install mypy\n'
-                'and then repeating this command'))
-        args = [bin_path]
-        if self.mypy_args:
-            args.append(self.mypy_args)
-        args += ['climatecontrol']
-        errno = call(args, cwd=rootdir)
-        sys.exit(errno)
 
 
 setup(
@@ -92,6 +57,5 @@ setup(
         'Programming Language :: Python :: 3.5',
     ],
     setup_requires=['pytest-runner', 'setuptools_scm'],
-    tests_require=test_requirements,
-    cmdclass={'typecheck': Typecheck},
+    tests_require=test_requirements
 )

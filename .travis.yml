@@ -6,7 +6,7 @@ install:
   - pip install coveralls mypy==0.550 flake8==3.5.0 flake8-docstrings==1.1.0 pyyaml
 script:
   - flake8
-  - python setup.py typecheck
+  - mypy climatecontrol
   - python setup.py test
 after_success:
   - coveralls

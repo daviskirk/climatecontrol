@@ -29,24 +29,26 @@ def test_env_parser_assign(mock_empty_os_environ, attr, value, expected):
             assert s.settings_file_env_var == 'THIS_' + expected.upper()
 
 
-@pytest.mark.parametrize('prefix, max_depth, split_char, expected', [
-    ('TEST_STUFF', 1, '_', {'testgroup': {'testvar': 7, 'test_var': 6}}),
+@pytest.mark.parametrize('implicit_depth_arg', ['max_depth', 'implicit_depth'])
+@pytest.mark.parametrize('prefix, implicit_depth, split_char, expected', [
+    ('TEST_STUFF', 1, '_', {'testgroup': {'testvar': 7, 'test_var': 9}}),
     ('TEST_STUFF', 1, '-', {}),
-    ('TEST_STUFF', 0, '_', {'testgroup_testvar': 7, 'testgroup_test_var': 6}),
-    ('TEST_STUFF_', 1, '_', {'testgroup': {'testvar': 7, 'test_var': 6}}),
+    ('TEST_STUFF', 0, '_', {'testgroup': {'testvar': 7, 'test_var': 6}, 'testgroup_test_var': 9}),
+    ('TEST_STUFF_', 1, '_', {'testgroup': {'testvar': 7, 'test_var': 9}}),
     ('TEST_STUFFING', 1, '_', {}),
 ])
-def test_parse_environment_vars(mock_os_environ, prefix, max_depth, split_char, expected):
+def test_parse_environment_vars(mock_os_environ, prefix, implicit_depth_arg, implicit_depth, split_char, expected):
     """Check that we can parse settings from variables."""
+    implicit_depth_kwarg = {implicit_depth_arg: implicit_depth}
     env_parser = settings_parser.EnvParser(
         prefix=prefix,
-        max_depth=max_depth,
-        split_char=split_char)
+        split_char=split_char,
+        **implicit_depth_kwarg)
     result = env_parser.parse()
     assert result == expected
 
 
-@pytest.mark.parametrize('max_depth, environ, expected', [
+@pytest.mark.parametrize('implicit_depth, environ, expected', [
     (
         1,
         {
@@ -90,11 +92,11 @@ def test_parse_environment_vars(mock_os_environ, prefix, max_depth, split_char, 
     (
         -1,
         {
-            'TEST_STUFF_TESTGROUP_TEST__INT': '6',
-            'TEST_STUFF_TESTGROUP_TEST__ARRAY': '[4, 5, 6]',
-            'TEST_STUFF_TESTGROUP_TEST__RAW__STR': 'al//asdjk',
-            'TEST_STUFF_TESTGROUP_TEST__STR': '"[4, 5, 6]"',
-            'TEST_STUFF_TESTGROUP_TEST__AMQP': 'amqp://guest:guest@127.0.0.1:5672//'
+            'TEST_STUFF_TESTGROUP__TEST_INT': '6',
+            'TEST_STUFF_TESTGROUP__TEST_ARRAY': '[4, 5, 6]',
+            'TEST_STUFF_TESTGROUP__TEST_RAW_STR': 'al//asdjk',
+            'TEST_STUFF_TESTGROUP__TEST_STR': '"[4, 5, 6]"',
+            'TEST_STUFF_TESTGROUP__TEST_AMQP': 'amqp://guest:guest@127.0.0.1:5672//'
         },
         {
             'testgroup': {
@@ -108,9 +110,9 @@ def test_parse_environment_vars(mock_os_environ, prefix, max_depth, split_char, 
     ),
 
 ])
-def test_parse_toml(monkeypatch, max_depth, environ, expected):
+def test_parse_toml(monkeypatch, implicit_depth, environ, expected):
     """Check that we can parse toml from environment variables."""
     monkeypatch.setattr(os, 'environ', environ)
-    env_parser = settings_parser.EnvParser(prefix='TEST_STUFF', max_depth=max_depth)
+    env_parser = settings_parser.EnvParser(prefix='TEST_STUFF', implicit_depth=implicit_depth)
     result = env_parser.parse()
     assert result == expected

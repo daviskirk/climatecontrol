@@ -72,16 +72,17 @@ class Settings(Mapping):
         preparsers: See attribute
         parse_order: See attribute
         update_on_init: If set to ``True``, read all configurations upon initialization.
-        **env_parser_kwargs: Arguments passed to ``EnvParser`` constructor.
+        **env_parser_kwargs: Arguments passed to :class:`EnvParser` constructor.
 
     Example:
         >>> import os
-        >>> os.environ['MY_APP_SECTION1_SUBSECTION1'] = 'test1'
-        >>> os.environ['MY_APP_SECTION2_SUBSECTION2'] = 'test2'
-        >>> os.environ['MY_APP_SECTION2_SUBSECTION3'] = 'test3'
-        >>> settings_map = Settings(prefix='MY_APP')
+        >>> os.environ['MY_APP_VALUE0'] = 'test0'
+        >>> os.environ['MY_APP_SECTION1_SUB1'] = 'test1'
+        >>> os.environ['MY_APP_SECTION2_SUB2'] = 'test2'
+        >>> os.environ['MY_APP_SECTION2_SUB3'] = 'test3'
+        >>> settings_map = Settings(prefix='MY_APP', implicit_depth=1)
         >>> dict(settings_map)
-        {'section1': {'subsection1': 'test1'}, 'section2': {'subsection2': 'test2', 'subsection3': 'test3'}}
+        {'value0': 'test0', 'section1': {'subsection1': 'test1'}, 'section2': {'sub2': 'test2', 'sub3': 'test3'}}
 
         Using filters we can conveniently promote a specific sections to the top level namespace
 
@@ -324,10 +325,11 @@ class EnvParser:
         split_char: Character to split variables at. Note that if prefix
             is given, the variable name must also be seperated from the base
             with this character.
-        max_depth: Maximumum depth of nested environment variables to consider.
-            Note that if a file is given, the maximum depth does not apply as
-            the definition is clear.
-
+        implicit_depth: Maximumum depth of implicitely nested environment
+            variables to consider. If set, the first `implicit_depth`
+            occurrences of a single `split_char` character will be considered
+            nested settings boundaries. Note that if a file is given, the
+            maximum depth does not apply as the definition is clear.
         settings_file_suffix: Suffix to identify an environment variable as a
             settings file.
 
@@ -339,10 +341,11 @@ class EnvParser:
             constructed from ``settings_file_suffix`` is excluded in any case.
 
     Attributes:
-        settings_file_env_var: Name of the settings file environment variable. Is constructed automatically.
+        settings_file_env_var: Name of the settings file environment variable.
+            Is constructed automatically.
 
     Examples:
-        >>> env_parser = EnvParser(prefix='THIS_EXAMPLE')
+        >>> env_parser = EnvParser(prefix='THIS_EXAMPLE', implicit_depth=1)
         >>>
         >>> with os.open('settings.toml', 'w') as f:
         ...     f.write('[testgroup]\nother_var = 345')
@@ -355,17 +358,21 @@ class EnvParser:
 
     """
 
-    escape_placeholder = '$$$$'
-
     def __init__(self,
                  prefix: str = 'APP_SETTINGS',
                  split_char: str = '_',
-                 max_depth: int = 1,
+                 implicit_depth: int = 0,
+                 max_depth=None,
                  settings_file_suffix: str = 'SETTINGS_FILE',
                  exclude: Sequence[str] = ()) -> None:
         """Initialize object."""
         self.settings_file_suffix = str(settings_file_suffix)
-        self.max_depth = int(max_depth)
+        if max_depth is not None:
+            logger.warning('`max_depth` is deprecated and will be removed '
+                           'in next release. Please use `implicit_depth` instead.')
+            self.implicit_depth = int(max_depth)
+        else:
+            self.implicit_depth = int(implicit_depth)
         self.split_char = split_char
         self.prefix = prefix
         self.exclude = exclude
@@ -429,7 +436,14 @@ class EnvParser:
             nested dictionary
 
         Examples:
-            >>> env_parser = EnvParser(prefix='THIS_EXAMPLE', max_depth=2, split_char='_')
+            Use implicit_depth to ensure that split chars are used up to a certain depth.
+
+            >>> os.environ['THIS_EXAMPLE_TESTGROUP_TESTVAR'] = 27
+            >>> env_parser = EnvParser(prefix='THIS_EXAMPLE')
+            >>> result_dict = env_parser.parse()
+            >>> result_dict
+            {'testgroup_testvar': 27}
+            >>> env_parser = EnvParser(prefix='THIS_EXAMPLE', implicit_depth=1)
             >>> os.environ['THIS_EXAMPLE_TESTGROUP_TESTVAR'] = 27
             >>> result_dict = env_parser.parse()
             >>> result_dict
@@ -443,41 +457,62 @@ class EnvParser:
         return settings_map
 
     def _build_env_var(self, *parts: str) -> str:
-        return self.split_char.join(p.strip(self.split_char).upper() for p in parts)
+        return self.split_char.join(self._strip_split_char(p).upper() for p in parts)
 
-    def _escape(self, s: str, *, inverse: bool = False) -> str:
-        """Escape environment variables split char by parsing out double chars.
+    def _build_settings_update(self, keys: Sequence[str], value: Any) -> dict:
+        """Build a settings update dictionary.
 
-        Examples:
-            >>> 'bla_bla__this
+        Args:
+            keys: Sequence of keys, each key representing a level in a nested dictionary
+            value: Value that is assigned to the key at the deepest level.
 
         """
-        # Choose something that can't be in an env var
-        if inverse:
-            args = [self.escape_placeholder, self.split_char]
-        else:
-            args = [self.split_char * 2, self.escape_placeholder]
-        return s.replace(args[0], args[1])
+        update = {}  # type: dict
+        u = update
+        for key in keys[:-1]:
+            u[key] = {}
+            u = u[key]
+        u[keys[-1]] = value
+        return update
+
+    def _iter_nested_keys(self, env_var: str) -> Iterator[str]:
+        """Iterate over nested keys of an environment variable name.
+
+        Yields:
+            String representing each nested key.
+
+        """
+        env_var_low = env_var.lower()
+        if env_var_low in self.exclude or not env_var_low.startswith(self.prefix.lower()):
+            return
+        body = env_var_low[len(self.prefix):]
+        sections = body.split(self.split_char * 2)
+        for i_section, section in enumerate(sections):
+            if self.implicit_depth > 0 and i_section == 0:
+                for s in section.split(self.split_char, self.implicit_depth):
+                    if s:
+                        yield s
+            elif section:
+                yield section
 
     def _iter_parse(self, include_vars: bool = True, include_file: bool = True) -> Iterator[EnvSetting]:
-        """Use in ``parse``."""
+        """Use in ``parse``.
+
+        Iterate over valid environment variables and files defined by
+        environment variables and yieldan envirnment settings tuple for each
+        valid entry.
+
+        See also:
+            :meth:`parse`
+
+        """
         if include_vars:
             for env_var in os.environ:
-                env_var_low = env_var.lower()
-                if env_var_low in self.exclude or not env_var_low.startswith(self.prefix.lower()):
-                    continue
-                escaped = self._escape(env_var_low)[len(self.prefix):]
-                escaped_nested_keys = escaped.split(self.split_char, self.max_depth)
-                nested_keys = [self._unescape(k) for k in escaped_nested_keys]
+                nested_keys = list(self._iter_nested_keys(env_var))
                 if not nested_keys:
                     continue
-                update = {}  # type: dict
-                u = update
-                for nk in nested_keys[:-1]:
-                    u[nk] = {}
-                    u = u[nk]
                 value = self._get_env_var_value(env_var)
-                u[nested_keys[-1]] = value
+                update = self._build_settings_update(nested_keys, value)
                 if update:
                     yield EnvSetting(env_var, update)
         if include_file:
@@ -485,12 +520,16 @@ class EnvParser:
             if settings_file:
                 yield EnvSetting(self.settings_file_env_var, read_file(settings_file))
 
-    def _unescape(self, s: str) -> str:
-        """See ``escape`` with ``inverse`` set to ``True``."""
-        return self._escape(s, inverse=True)
+    def _strip_split_char(self, s):
+        if s.startswith(self.split_char):
+            s = s[len(self.split_char):]
+        elif s.endswith(self.split_char):
+            s = s[:-len(self.split_char)]
+        return s
 
     @staticmethod
     def _get_env_var_value(env_var: str) -> Any:
+        """Parse an environment variable value using the toml parser."""
         v = os.environ[env_var]
         try:
             if toml._load_value.__code__.co_argcount == 1:

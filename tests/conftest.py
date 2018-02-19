@@ -1,5 +1,5 @@
 """Test settings."""
-
+from collections import OrderedDict
 import sys
 import os
 import pytest
@@ -13,13 +13,14 @@ from climatecontrol import settings_parser  # noqa: E402
 @pytest.fixture
 def mock_os_environ(monkeypatch):
     """Mock os environment and set a few settings with environment variables."""
-    mock_environ = {
-        'test_stuff': 2,
-        'TEST_STUFF': 5,
-        'TEST_STUFF_TESTGROUP_TEST_VAR': 6,
-        'TEST_STUFF_TESTGROUP_TESTVAR': 7,
-        'TEST_STUFFTESTGROUP_TESTVAR': 8,
-    }
+    mock_environ = OrderedDict([
+        ('test_stuff', 2),
+        ('TEST_STUFF', 5),
+        ('TEST_STUFF_TESTGROUP__TEST_VAR', 6),
+        ('TEST_STUFF_TESTGROUP__TESTVAR', 7),
+        ('TEST_STUFFTESTGROUP__TESTVAR', 8),
+        ('TEST_STUFF_TESTGROUP_TEST_VAR', 9),
+    ])
     monkeypatch.setattr(os, 'environ', mock_environ)
 
 

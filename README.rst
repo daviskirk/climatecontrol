@@ -28,9 +28,8 @@ Set some environment variables in your shell
 
 .. code:: sh
 
-   export MY_APP_SECTION1_SUBSECTION1=test1
-   export MY_APP_SECTION2_SUBSECTION2=test2
-   export MY_APP_SECTION2_SUBSECTION3=test3
+   export MY_APP_VALUE1=test1
+   export MY_APP_VALUE2=test2
 
 Then use them in your python modules:
 
@@ -41,13 +40,8 @@ Then use them in your python modules:
    print(dict(settings_map))
 
    {
-       'section1': {
-           'subsection1': 'test1'
-       },
-       'section2': {
-           'subsection2': 'test2',
-           'subsection3': 'test3'
-       }
+       'value1': 'test1',
+       'value2': 'test2'
    }
 
 In case you want to update your settings or your environment variables have
@@ -57,66 +51,72 @@ settings:
 .. code:: python
 
    import os
-   os.environ['MY_APP_SECTION2_NEW_ENV_VAR'] = 'new_env_data'
+   os.environ['MY_APP_VALUE3'] = 'new_env_data'
    settings_map.update()
    print(dict(settings_map))
 
    {
-       'section1': {
-           'subsection1': 'test1'
-       },
-       'section2': {
-           'subsection2': 'test2',
-           'subsection3': 'test3',
-           'new_env_var': 'new_env_data'
-       }
+       'value1': 'test1',
+       'value2': 'test2',
+       'value3': 'new_env_data'
    }
 
 
-Now you've noticed that you want more complex configurations and have settings
-variables with underscores all over the place. For this situation you can
-escape the section - splitting mechanism by using the splitting character twice
-in your env variables:
+Now you've noticed that you want more complex configurations and need nested
+settings. For this situation we can delimit sections using a double underscore:
+
+.. code:: sh
+
+   export MY_APP_SECTION1__VALUE1=test1
+   export MY_APP_SECTION2__VALUE2=test2
+   export MY_APP_SECTION2__VALUE3=test3
+   export MY_APP_SECTION2__SUB_SECTION__VALUE4=test4
 
 .. code:: python
 
-   settings_map = Settings(prefix='MY_APP', max_depth=3)
+   settings_map = Settings(prefix='MY_APP')
    print(dict(settings_map))
 
    {
        'section1': {
-           'subsection1': 'test1'
+           'value1': 'test1'
        },
        'section2': {
-           'subsection2': 'test2',
-           'subsection3': 'test3',
-           'new': {
-               'env': {
-                   'var': 'new_env_data'
-               }
+           'value2': 'test2',
+           'value3': 'test3',
+           'sub_section': {
+               'value4': 'test4'
            }
        }
    }
 
-   # That was ugly... we wanted something else
-   del os.environ['MY_APP_SECTION2_NEW_ENV_VAR']
 
-   # Notice the __ in the variable:
-   os.environ['MY_APP_SECTION2_NEW_ENV__VAR'] = 'new_env_data'
+Finally if you decide that your settings are simpler and you know that your
+section names do not have underscores, you can use the ``implicit_depth``
+option, which allows you to add a new section at every single underscore (up to
+the depth you specify).
 
-   # Now let's look again
-   settings_map.update()
+.. code:: sh
+
+   export MY_APP_SECTION1_VALUE1=test1
+   export MY_APP_SECTION2_VALUE2=test2
+   export MY_APP_SECTION2_VALUE3=test3
+   export MY_APP_SECTION2_SUBSECTION_VALUE4=test4
+
+.. code:: python
+
+   settings_map = Settings(prefix='MY_APP', implicit_depth=2)
    print(dict(settings_map))
 
    {
        'section1': {
-           'subsection1': 'test1'
+           'value1': 'test1'
        },
        'section2': {
-           'subsection2': 'test2',
-           'subsection3': 'test3',
-           'new': {
-               'env_var': 'new_env_data'
+           'value2': 'test2',
+           'value3': 'test3',
+           'subsection': {
+               'value4': 'test4'
            }
        }
    }
