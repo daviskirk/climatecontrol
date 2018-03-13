@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.5] - 2018-03-13
+
 ### Changed
 - splitting behaviour has changed: By default, a double ``split_char`` ("\_\_")
   indicates a new nested settings section. This allows environment variables to
