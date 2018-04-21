@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 import os
 import json
 import toml
+import warnings
 try:
     import yaml
 except ImportError:
@@ -368,8 +369,9 @@ class EnvParser:
         """Initialize object."""
         self.settings_file_suffix = str(settings_file_suffix)
         if max_depth is not None:
-            logger.warning('`max_depth` is deprecated and will be removed '
-                           'in next release. Please use `implicit_depth` instead.')
+            # Use warnings module as logging probably isn't configured yet at this stage of the app.
+            warnings.warn('`max_depth` is deprecated and will be removed '
+                          'in next release. Please use `implicit_depth` instead.')
             self.implicit_depth = int(max_depth)
         else:
             self.implicit_depth = int(implicit_depth)
