@@ -244,6 +244,26 @@ def test_filters(mock_empty_os_environ):
     assert dict(settings_map) == {'subsection1': 'test1', 'subsection2': 'test2', 'subsection3': 'test3'}
 
 
+def test_temporary_changes():
+    """Test that temporary changes settings context manager works.
+
+    Within the context, settings should be changeable. After exit, the original
+    settings should be restored.
+
+    """
+    s = settings_parser.Settings()
+    s.update({'a': 1})
+    with s.temporary_changes():
+        # Change the settings within the context
+        s.update({'a': 2, 'b': 2})
+        s.settings_files.append('test')
+        assert s['a'] == 2
+        assert len(s.settings_files) == 1
+    # Check that outside of the context the settings are back to their old state.
+    assert s['a'] == 1
+    assert len(s.settings_files) == 0
+
+
 @pytest.mark.parametrize('use_method', [True, False])
 @pytest.mark.parametrize('option_name', ['config', 'settings'])
 @pytest.mark.parametrize('mode', ['config', 'noconfig', 'wrongfile', 'noclick'])

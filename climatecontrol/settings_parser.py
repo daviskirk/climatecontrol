@@ -1,6 +1,7 @@
 """Settings parser."""
 
 from abc import ABC, abstractmethod
+from contextlib import contextmanager
 import os
 import json
 import toml
@@ -337,6 +338,31 @@ class Settings(Mapping):
                 parsed_v = self.parse_from_file_vars(v)
                 new_data[k] = parsed_v
         return new_data
+
+    @contextmanager
+    def temporary_changes(self):
+        """Open a context where any changes to the settings are rolled back on context exit.
+
+        This context manager can be used for testing or to temporarily change
+        settings.
+
+        Example:
+            >>> from climatecontrol.settings_parser import Settings
+            >>> settings = Settings()
+            >>> settings.update({'a': 1})
+            >>> with settings.temporary_changes():
+            ...     settings.update({'a': 2})
+            ...     assert settings['a'] == 2
+            >>> assert settings['a'] == 1
+
+        """
+        archived_settings = deepcopy(self._data)
+        archived_settings_files = deepcopy(self._settings_files)
+        archived_external_data = deepcopy(self.external_data)
+        yield self
+        self._data = archived_settings
+        self._settings_files = archived_settings_files
+        self.external_data = archived_external_data
 
 
 EnvSetting = NamedTuple('EnvSetting', [('name', str), ('value', Mapping[str, Any])])

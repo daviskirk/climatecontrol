@@ -200,6 +200,29 @@ save it to a file like "cli.py" and then call it after installing click:
 whithout needing to set any env vars.
 
 
+Testing
+-------
+
+When testing your application, different behaviours often depend on settings
+taking on different values. Assuming that you are using a single `Settings`
+object accross multiple functions or modules, handling these settings changes
+in tests can be tricky.
+
+The settings object provides a simple method for modifying your settings object
+temporarily:
+
+.. code:: python
+
+   settings_map.update({'a': 1})
+   # Enter a temporary changes context block:
+   with settings_map.temporary_changes():
+       settings_map.update({'a': 1})
+       # Inside the context, the settings can be modified and used as you choose
+       print(settings_map['a'])  # outputs: 2
+   # After the context exits the settings map
+   print(settings_map['a'])  # outputs: 1
+
+
 .. |Build Status| image:: https://travis-ci.org/daviskirk/climatecontrol.svg?branch=master
    :target: https://travis-ci.org/daviskirk/climatecontrol
 .. |Coverage Status| image:: https://coveralls.io/repos/github/daviskirk/climatecontrol/badge.svg?branch=master
