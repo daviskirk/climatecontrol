@@ -17,9 +17,6 @@ Install
     pip install climatecontrol
 
 
-Note that versions 0.2.4 and below will probably not work with python 3.5.2 and
-below. Default 3.5 branch should work fine though.
-
 
 Usage
 -----
@@ -221,6 +218,12 @@ temporarily:
        print(settings_map['a'])  # outputs: 2
    # After the context exits the settings map
    print(settings_map['a'])  # outputs: 1
+
+
+Limitations
+-----------
+
+Do to the use of modern python features, only python 3.5 and above are supported.
 
 
 .. |Build Status| image:: https://travis-ci.org/daviskirk/climatecontrol.svg?branch=master
