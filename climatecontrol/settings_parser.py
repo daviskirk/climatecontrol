@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 import os
 import json
 import toml
+import warnings
 try:
     import yaml
 except ImportError:
@@ -55,8 +56,9 @@ class Settings(Mapping):
             and output a nested dictionary.
         preparsers: Sequence of preparsers (callables) to use. Note that
             strings are assumed to be methods in the current class. Each
-            preprocessor must take a mapping as input and return a mapping
-            as output.
+            preprocessor must take a mapping as input and return a mapping as
+            output. Currently only :meth:`parse_from_file_vars` is available
+            and set by default.
         parse_order: Order in which options are parsed. If no
             ``parse_order`` argument is given upon initialization, the
             default order: ``("files", "env_file", "env", "external")`` is
@@ -243,8 +245,16 @@ class Settings(Mapping):
         settings_map = self.subtree(settings_map)
         self._data = self.parse(settings_map)
 
-    def parse(self, data) -> Dict:
-        """Parse data into settings."""
+    def parse(self, data: Mapping) -> Dict:
+        """Parse data into settings.
+
+        Args:
+            data: Raw mapping to be parsed
+
+        Returns:
+            Parsed data that has run through all preparsers and the `Settings`.
+
+        """
         for preparser in self.preparsers:
             data = preparser(data)
 
@@ -285,7 +295,21 @@ class Settings(Mapping):
         return file_settings_map
 
     def parse_from_file_vars(self, data: Any, postfix_trigger='_from_file') -> Any:
-        """Parse settings from environment variables."""
+        """Parse settings values from content local files.
+
+        Args:
+            data: Given subset of settings data (or entire settings mapping)
+            postfix_trigger: Optionally configurable string to trigger a local
+                file value. If a key is found which ends with this string, the
+                value is assumed to be a file path and the settings value will
+                be set to the content of the file.
+
+        Returns:
+            An updated copy of `data` with keys and values replaced accordingly.
+
+        Note: This method is typically used as a preparser method in order to in
+
+        """
         if not data:
             return data
         elif isinstance(data, Mapping):
@@ -304,7 +328,9 @@ class Settings(Mapping):
                 except FileNotFoundError as e:
                     logger.info('Error while trying to load variable from file: %s. Skipping...', e)
                 else:
-                    new_data[k[:-len(postfix_trigger)]] = v_from_file
+                    new_key = k[:-len(postfix_trigger)]
+                    new_data[new_key] = v_from_file
+                    logger.info('Settings key %s set to contents of file %s', new_key, v)
                 finally:
                     del new_data[k]
             elif isinstance(v, (Mapping, Sequence)) and not isinstance(v, str):
@@ -368,8 +394,9 @@ class EnvParser:
         """Initialize object."""
         self.settings_file_suffix = str(settings_file_suffix)
         if max_depth is not None:
-            logger.warning('`max_depth` is deprecated and will be removed '
-                           'in next release. Please use `implicit_depth` instead.')
+            # Use warnings module as logging probably isn't configured yet at this stage of the app.
+            warnings.warn('`max_depth` is deprecated and will be removed '
+                          'in next release. Please use `implicit_depth` instead.')
             self.implicit_depth = int(max_depth)
         else:
             self.implicit_depth = int(implicit_depth)
@@ -452,7 +479,7 @@ class EnvParser:
         """
         settings_map = {}  # type: dict
         for env_var, settings in self._iter_parse(include_vars=include_vars, include_file=include_file):
-            logger.info('Parsed setting from env var: {}.'.format(env_var))
+            logger.info('Parsed setting from env var: %s.', env_var)
             update_nested(settings_map, settings)
         return settings_map
 
@@ -652,10 +679,10 @@ class FileLoader(ABC):
         if not isinstance(path_or_content, str):
             raise TypeError('Expected "path_or_content" to be of type str, got {}'.format(type(path_or_content)))
         if cls._is_path(path_or_content):
-            logger.debug('Loaded settings from file at path: {}'.format(path_or_content))
+            logger.info('Loaded settings from file at path: {}'.format(path_or_content))
             return cls.from_path(path_or_content)
         elif cls._is_content(path_or_content):
-            logger.debug('Loaded settings from string found in settings file env var')
+            logger.debug('Loaded settings from string.')
             return cls.from_content(path_or_content)
         else:
             raise SettingsLoadError('path or content could not be loaded using {}'.format(cls.__name__))

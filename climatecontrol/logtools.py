@@ -29,7 +29,7 @@ DEFAULT_LOG_SETTINGS = {
     },
     'root': {
         'level': 'INFO',
-        'handlers': ["console"]
+        'handlers': ['console']
     }
 }
 

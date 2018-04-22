@@ -34,9 +34,9 @@ def read(fname):
 setup(
     name='climatecontrol',
     use_scm_version=True,
-    description="Python library for loading app configurations from files and/or namespaced environment variables",
+    description='Python library for loading app configurations from files and/or namespaced environment variables',
     long_description=read('README.rst'),
-    author="Davis Kirkendall",
+    author='Davis Kirkendall',
     author_email='davis.e.kirkendall@gmail.com',
     url='https://github.com/daviskirk/climatecontrol',
     packages=[
@@ -45,7 +45,7 @@ setup(
     package_dir={'climatecontrol': 'climatecontrol'},
     include_package_data=True,
     install_requires=requirements,
-    license="MIT",
+    license='MIT',
     zip_safe=False,
     keywords='climatecontrol',
     classifiers=[
