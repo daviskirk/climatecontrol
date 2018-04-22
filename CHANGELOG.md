@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [0.6] - 2018-04-23
+
+### Added
+
+- [#9](https://github.com/daviskirk/climatecontrol/pull/9): Add temporary_changes method to Settings object
+- [#10](https://github.com/daviskirk/climatecontrol/pull/10): Add better logging on setup
+
+
 ## [0.5] - 2018-03-13
 
 ### Changed
