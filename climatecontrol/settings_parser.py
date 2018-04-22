@@ -252,7 +252,8 @@ class Settings(Mapping):
             data: Raw mapping to be parsed
 
         Returns:
-            Parsed data that has run through all preparsers and the `Settings`
+            Parsed data that has run through all preparsers and the `Settings`.
+
         """
         for preparser in self.preparsers:
             data = preparser(data)
