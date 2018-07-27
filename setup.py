@@ -6,7 +6,6 @@ import os
 from setuptools import setup
 
 requirements = [
-    'toml>=0.9.2',
     'typing'
 ]
 
@@ -14,7 +13,9 @@ test_requirements = [
     'click',
     'pytest-mock',
     'pytest-cov>=2.5.1',
-    'pytest>=3.2.1'
+    'pytest>=3.2.1',
+    'toml>=0.9.2',
+    'pyyaml'
 ]
 
 rootdir = os.path.abspath(os.path.dirname(__file__))

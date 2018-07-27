@@ -2,6 +2,25 @@
 
 ## [Unreleased]
 
+### Removed
+
+- Removed unneeded (and undocumented) features:
+  - Filtering (error-prone and undocumented)
+  - Dynamic preparsers (should now be handled through subclassing)
+  - Ordering of source loading (should now be handled through subclassing)
+  - Remove hard dependency on toml (if no serialization libraries like toml or
+    yaml are installed, will fall back to json).
+
+### Fixed
+
+- #13 : Update fragments (seperate files) are now preprocessed seperately.
+  "from_file" variables can no longer override subsequent file settings.
+
+### Added
+
+- Add serialization to json and yaml when generating configurations.
+
+
 ## [0.6] - 2018-04-23
 
 ### Added

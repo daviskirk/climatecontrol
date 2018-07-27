@@ -1,29 +1,35 @@
 """Settings parser."""
 
 from abc import ABC, abstractmethod
+from collections import OrderedDict
 from contextlib import contextmanager
-import os
+from copy import deepcopy
 import json
-import toml
+import logging
+import os
+from pprint import pformat
+from typing import List, Type, TypeVar, Tuple # noqa F401
+from typing import (cast, Any, Callable, Set, Sequence,
+                    Optional, Union, Mapping, Dict, Iterator, NamedTuple)
 import warnings
+
+try:
+    import toml
+except ImportError:
+    toml = None  # type: ignore
 try:
     import yaml
 except ImportError:
-    yaml = None
+    yaml = None  # type: ignore
 try:
     import click
 except ImportError:
-    click = None
-from collections import OrderedDict
-from functools import partial
-from typing import List, Type # noqa F401
-from typing import (cast, Any, Callable, Iterable, Set, Sequence,
-                    Optional, Union, Mapping, Dict, Iterator, NamedTuple, Tuple)
-from pprint import pformat
-import logging
-from copy import deepcopy
+    click = None  # type: ignore
+
 from .logtools import DEFAULT_LOG_SETTINGS, logging_config
+
 logger = logging.getLogger(__name__)
+T = TypeVar('T')
 
 
 class SettingsValidationError(ValueError):
@@ -47,33 +53,17 @@ class Settings(Mapping):
             loaded one after another with variables set in later files
             overwriting values set in previous files.
         env_parser: `EnvParser` object handling the parsing of environment variables
-        filters: Allows the settings to be filtered depending on the passed
-            value. A string value will only use the settings section defined
-            by the string. A ``dict`` or ``Mapping`` allows the settings to
-            be limited to multiple sublevels.
         parser: If given, defines a custom function to further process the
             result of the settings. The function should take a single
             nested dictionary argument (the settings map) as an argument
             and output a nested dictionary.
-        preparsers: Sequence of preparsers (callables) to use. Note that
-            strings are assumed to be methods in the current class. Each
-            preprocessor must take a mapping as input and return a mapping as
-            output. Currently only :meth:`parse_from_file_vars` is available
-            and set by default.
-        parse_order: Order in which options are parsed. If no
-            ``parse_order`` argument is given upon initialization, the
-            default order: ``("files", "env_file", "env", "external")`` is
-            used. Entries later in the order will overwrite earlier entries.
         update_on_init: If set to `False` no parsing is performed upon
             initialization of the object. You will need to call update
             manually if you want load use any settings.
 
     Args:
         settings_files: See attribute
-        filters: See attribute
         parser: See attribute
-        preparsers: See attribute
-        parse_order: See attribute
         update_on_init: If set to ``True``, read all configurations upon initialization.
         **env_parser_kwargs: Arguments passed to :class:`EnvParser` constructor.
 
@@ -87,16 +77,6 @@ class Settings(Mapping):
         >>> dict(settings_map)
         {'value0': 'test0', 'section1': {'subsection1': 'test1'}, 'section2': {'sub2': 'test2', 'sub3': 'test3'}}
 
-        Using filters we can conveniently promote a specific sections to the top level namespace
-
-        >>> dict(Settings(prefix='MY_APP', filters='section1'))
-        {'subsection1': 'test1'}
-
-        Or gather multiple sections into the same namespace (sometimes dangerous if the subsections are not unique)
-
-        >>> dict(Settings(prefix='MY_APP', filters=['section1', 'section2']))
-        {'subsection1': 'test1', 'subsection2': 'test2', 'subsection3': 'test3'}
-
     See Also:
         EnvParser
 
@@ -104,21 +84,16 @@ class Settings(Mapping):
 
     def __init__(self,
                  settings_files: Optional[Sequence[str]] = None,
-                 filters: Optional[Union[str, Iterable, Mapping]] = None,
                  parser: Optional[Callable] = None,
-                 parse_order: Optional[Sequence[str]] = None,
-                 preparsers: Sequence = ('parse_from_file_vars',),
                  update_on_init: bool = True,
                  **env_parser_kwargs) -> None:
         """Initialize settings object."""
         self.env_parser = EnvParser(**(env_parser_kwargs or {}))
         self.parser = parser
-        self.preparsers = preparsers
-        self.filters = filters
         self.settings_files = settings_files
         self.external_data = {}  # type: Dict
-        self._data = {}  # type: Dict
-        self.parse_order = parse_order
+        self._data = {}  # type: Mapping
+
         if update_on_init:
             self.update()
 
@@ -135,24 +110,7 @@ class Settings(Mapping):
         yield from self._data
 
     @property
-    def parse_order(self) -> Tuple[str, ...]:
-        """Return which options to use first when parsing settings."""
-        return self._parse_order
-
-    @parse_order.setter
-    def parse_order(self, parse_order: Sequence[str]) -> None:
-        """Set which options to use first when parsing settings."""
-        parse_options = self._parse_option_fcn_map.keys()
-        if parse_order:
-            if len(parse_order) != len(parse_options) or set(parse_order) != set(parse_options):
-                raise ValueError('``parse_order`` must be sequence containing all strings {}. Got {} instead.'
-                                 .format(list(parse_options), parse_order))
-        else:
-            parse_order = tuple(parse_options)
-        self._parse_order = tuple(parse_order)
-
-    @property
-    def parser(self) -> Callable:
+    def parser(self) -> Optional[Callable]:
         """Return settings parser function."""
         return self._parse
 
@@ -162,21 +120,6 @@ class Settings(Mapping):
         if value and not callable(value):
             raise TypeError('If given, ``parser`` must be a callable')
         self._parse = value
-
-    @property
-    def preparsers(self) -> Tuple[Callable, ...]:
-        """Return current preparser functions."""
-        return self._preparsers
-
-    @preparsers.setter
-    def preparsers(self, preparsers: Sequence) -> None:
-        """Set parsers that should be used before actual call to the main "parse" method."""
-        parsed_preparsers = []
-        for preparser in preparsers:
-            if isinstance(preparser, str):
-                preparser = getattr(self, preparser)
-            parsed_preparsers.append(preparser)
-        self._preparsers = tuple(parsed_preparsers)
 
     @property
     def settings_files(self) -> Sequence:
@@ -190,26 +133,6 @@ class Settings(Mapping):
         if isinstance(files, str):
             files = (files,)
         self._settings_files = list(files)
-
-    @property
-    def _parse_option_fcn_map(self) -> OrderedDict:
-        return OrderedDict([
-            ('files', self._parse_files),
-            ('env_file', partial(self.env_parser.parse, include_vars=False)),
-            ('env', partial(self.env_parser.parse, include_file=False)),
-            ('external', lambda: self.external_data)
-        ])
-
-    def get_configuration_file(self, save_to=None) -> Optional[str]:
-        """Generate a settings file from the current settings."""
-        default_str = toml.dumps(OrderedDict(sorted(self._data.items())))
-        default_str = default_str.replace('\n[', '\n\n[')
-        if save_to:
-            with open(save_to, 'w') as f:
-                f.write(default_str)
-            return None
-        else:
-            return default_str
 
     def update(self, d: Optional[Union[Mapping, Dict]] = None, clear_external: bool = False) -> None:
         """Update object settings and reload files and environment variables.
@@ -238,15 +161,12 @@ class Settings(Mapping):
             self.external_data = {}
         if d:
             update_nested(self.external_data, d)
-        parse_option_fcn_map = self._parse_option_fcn_map
-        for parse_option in self.parse_order:
-            fcn = parse_option_fcn_map[parse_option]
-            settings_map_updates = fcn()
-            update_nested(settings_map, settings_map_updates)
-        settings_map = self.subtree(settings_map)
+        for fragment in self.iter_source_loaders():
+            fragment = self.preprocess_fragment(fragment)
+            update_nested(settings_map, fragment)
         self._data = self.parse(settings_map)
 
-    def parse(self, data: Mapping) -> Dict:
+    def parse(self, data: Mapping) -> Mapping:
         """Parse data into settings.
 
         Args:
@@ -256,15 +176,12 @@ class Settings(Mapping):
             Parsed data that has run through all preparsers and the `Settings`.
 
         """
-        for preparser in self.preparsers:
-            data = preparser(data)
-
         if self._parse:
             return self._parse(data)
         else:
             return data
 
-    def setup_logging(self, logging_section='logging'):
+    def setup_logging(self, logging_section: str = 'logging') -> None:
         """Initialize logging.
 
         Uses the ``'logging'`` section from the global ``SETTINGS`` object if
@@ -278,25 +195,47 @@ class Settings(Mapping):
             logging_settings.update(logging_settings_update)
         logging_config.dictConfig(logging_settings)
 
-    def subtree(self, data: Dict) -> Dict:
-        """See :func:`subtree`."""
-        return subtree(data, self.filters, parent_hierarchy=['settings'])
-
     def click_settings_file_option(self, **kw) -> Callable:
         """See :func:`cli_utils.click_settings_file_option`."""
         from . import cli_utils
         return cli_utils.click_settings_file_option(self, **kw)
 
-    def _parse_files(self) -> Dict[str, Any]:
-        file_settings_map = {}  # type: Dict[str, Any]
-        for settings_file in self.settings_files:
-            file_update = read_file(settings_file, raise_error=True)
-            if file_update:
-                update_nested(file_settings_map, file_update)
-        return file_settings_map
+    def iter_source_loaders(self) -> Iterator:
+        """Iterate over functions to load settings from various sources.
 
-    def parse_from_file_vars(self, data: Any, postfix_trigger='_from_file') -> Any:
-        """Parse settings values from content local files.
+        Yields:
+            Each yielded item represents an updates to the settings data.
+
+        """
+        yield from self._iter_load_files()
+        yield self._load_env_file()
+        yield self._load_env()
+        yield self._load_external()
+
+    def preprocess_fragment(self, fragment: T) -> T:
+        """Preprocess a settings fragment and return the new version."""
+        return self._render_from_file_vars(fragment)
+
+    def to_config(self, *, save_to: str = None, style: str = '.json') -> Optional[str]:
+        """Generate a settings file from the current settings."""
+        if save_to:
+            style = os.path.splitext(save_to)[1]
+        for loader in [TomlLoader, YamlLoader, JsonLoader]:
+            if style in loader.valid_file_extensions:
+                s = loader.to_content(self._data)
+                break
+        else:
+            raise ValueError('Not a valid style / file extension: {}'.format(style))
+
+        if save_to:
+            with open(save_to, 'w') as f:
+                f.write(s)
+            return None
+        else:
+            return s
+
+    def _render_from_file_vars(self, data: T, postfix_trigger='_from_file') -> T:
+        """Read and replace settings values from content local files.
 
         Args:
             data: Given subset of settings data (or entire settings mapping)
@@ -308,8 +247,6 @@ class Settings(Mapping):
         Returns:
             An updated copy of `data` with keys and values replaced accordingly.
 
-        Note: This method is typically used as a preparser method in order to in
-
         """
         if not data:
             return data
@@ -320,7 +257,7 @@ class Settings(Mapping):
             new_data = [item for item in data]
             items = tuple(enumerate(data))
         else:
-            return data
+            return cast(T, data)
         for k, v in items:
             if isinstance(v, str) and isinstance(k, str) and k.lower().endswith(postfix_trigger):
                 try:
@@ -335,7 +272,7 @@ class Settings(Mapping):
                 finally:
                     del new_data[k]
             elif isinstance(v, (Mapping, Sequence)) and not isinstance(v, str):
-                parsed_v = self.parse_from_file_vars(v)
+                parsed_v = self._render_from_file_vars(v)
                 new_data[k] = parsed_v
         return new_data
 
@@ -363,6 +300,20 @@ class Settings(Mapping):
         self._data = archived_settings
         self._settings_files = archived_settings_files
         self.external_data = archived_external_data
+
+    def _iter_load_files(self) -> Iterator[Dict[str, Any]]:
+        for settings_file in self.settings_files:
+            file_update = read_file(settings_file, raise_error=True)
+            yield file_update
+
+    def _load_env_file(self) -> Dict[str, Any]:
+        return self.env_parser.parse(include_file=True, include_vars=False)
+
+    def _load_env(self) -> Dict[str, Any]:
+        return self.env_parser.parse(include_file=False, include_vars=True)
+
+    def _load_external(self) -> Dict[str, Any]:
+        return self.external_data
 
 
 EnvSetting = NamedTuple('EnvSetting', [('name', str), ('value', Mapping[str, Any])])
@@ -634,42 +585,6 @@ def read_file(path_or_content: str, raise_error: bool = False) -> Dict[str, Any]
     return file_data
 
 
-def subtree(data: Union[Dict, Mapping],
-            filters: Optional[Union[str, Mapping, Iterable]] = None,
-            parent_hierarchy: Iterable = ()) -> Any:
-    """Extract a sub-dictionary from subtrees using filters."""
-    if not parent_hierarchy:
-        parent_hierarchy = []
-    else:
-        parent_hierarchy = list(parent_hierarchy)
-    if not filters or filters == '*':
-        return data
-    if isinstance(filters, str):
-        key = filters
-        try:
-            return deepcopy(data[key])
-        except KeyError:
-            parent_str = '.'.join(parent_hierarchy)
-            logger.warning('Section {}.{} not found in data'.format(parent_str, key))
-            return {}
-    elif isinstance(filters, Mapping):
-        new_data = {}  # type: Dict
-        parent_hierarchy = parent_hierarchy + []
-        for k, v in filters.items():
-            subdata_root = subtree(data, k)
-            subdata = subtree(subdata_root, v, parent_hierarchy=parent_hierarchy + [k])
-            new_data.update(subdata)
-        return new_data
-    elif isinstance(filters, Iterable):
-        new_data = {}
-        parent_hierarchy = parent_hierarchy + []
-        for f in filters:
-            new_data.update(subtree(data, f, parent_hierarchy=parent_hierarchy))
-        return new_data
-    else:
-        raise TypeError('filters must be strings or iterables')
-
-
 def update_nested(d: Dict, u: Mapping) -> Dict:
     """Update nested mapping ``d`` with nested mapping ``u``."""
     for k, v in u.items():
@@ -697,6 +612,12 @@ class FileLoader(ABC):
     @abstractmethod
     def from_content(cls, content: str) -> Any:
         """Load serialized data from content."""
+        pass
+
+    @classmethod
+    @abstractmethod
+    def to_content(cls, data: Mapping) -> str:
+        """Serialize data to string."""
         pass
 
     @classmethod
@@ -736,20 +657,28 @@ class YamlLoader(FileLoader):
     @classmethod
     def from_content(cls, content: str) -> Any:
         """Load data from yaml formatted string."""
-        return cls._load_yaml(content)
+        cls._check_yaml()
+        return yaml.safe_load(content)
 
     @classmethod
     def from_path(cls, path: str) -> Any:
         """Load data from path containing a yaml file."""
+        cls._check_yaml()
         with open(path) as f:
-            return cls._load_yaml(f)
+            return yaml.safe_load(f)
+
+    @classmethod
+    def to_content(cls, data: Mapping) -> str:
+        """Serialize mapping to string."""
+        cls._check_yaml()
+        s = yaml.safe_dump(data, default_flow_style=False)
+        s = '---\n' + s
+        return s
 
     @staticmethod
-    def _load_yaml(stream: Any) -> Any:
-        """Load yaml if yaml library is available."""
+    def _check_yaml():
         if yaml is None:
             raise ImportError('"pyyaml" package needs to be installed to parse yaml files.')
-        return yaml.safe_load(stream)
 
 
 class JsonLoader(FileLoader):
@@ -769,6 +698,11 @@ class JsonLoader(FileLoader):
         with open(path) as f:
             return json.load(f)
 
+    @classmethod
+    def to_content(cls, data: Mapping) -> str:
+        """Serialize mapping to string."""
+        return json.dumps(data, indent=4)
+
 
 class TomlLoader(FileLoader):
     """FileLoader for .toml files."""
@@ -779,10 +713,25 @@ class TomlLoader(FileLoader):
     @classmethod
     def from_content(cls, content: str) -> Any:
         """Load toml from string."""
+        cls._check_toml()
         return toml.loads(content)
 
     @classmethod
     def from_path(cls, path: str):
         """Load toml from file at path."""
+        cls._check_toml()
         with open(path) as f:
             return toml.load(f)
+
+    @classmethod
+    def to_content(cls, data: Mapping) -> str:
+        """Serialize mapping to string."""
+        cls._check_toml()
+        s = toml.dumps(OrderedDict(sorted(data.items())))
+        s = s.replace('\n[', '\n\n[')
+        return s
+
+    @staticmethod
+    def _check_toml():
+        if toml is None:
+            raise ImportError('"toml" package needs to be installed to parse toml files.')

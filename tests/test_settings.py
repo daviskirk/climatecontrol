@@ -168,29 +168,6 @@ def test_settings_files_and_env_file_and_env(mock_env_settings_file, tmpdir):
     }
 
 
-@pytest.mark.parametrize('order, expected', [
-    (None, {'testgroup': {'testvar': 'external'}}),
-    (('env', 'env_file', 'files', 'external'), {'testgroup': {'testvar': 'external'}}),
-    (('env', 'env_file', 'external', 'files'), {'testgroup': {'testvar': 'file'}}),
-    (('env', 'external', 'files', 'env_file'), {'testgroup': {'testvar': 'env_file'}}),
-    (('external', 'env_file', 'files', 'env'), {'testgroup': {'testvar': 'env'}})
-])
-def test_settings_parsing_order(tmpdir, order, expected):
-    """Check that parsing order can be changed."""
-    os.environ['TEST_STUFF_TESTGROUP__TESTVAR'] = 'env'
-    os.environ['TEST_STUFF_SETTINGS_FILE'] = '[testgroup]\ntestvar = "env_file"'
-    subdir = tmpdir.mkdir('order_subdir')
-    p = subdir.join('settings.toml')
-    p.write('[testgroup]\ntestvar = "file"')
-    settings_map = settings_parser.Settings(prefix='TEST_STUFF',
-                                            parse_order=order,
-                                            settings_files=[str(p)],
-                                            update_on_init=False)
-    settings_map.update({'testgroup': {'testvar': 'external'}})
-    assert isinstance(settings_map, Mapping)
-    assert dict(settings_map) == expected
-
-
 def mock_parser_fcn(s):
     """Return input instead of doing some complex parsing."""
     return s
@@ -230,18 +207,6 @@ def test_update(mock_empty_os_environ, mode):
         expected.update({'section2': {'new_env_value': 'new_env_data'}})
     s.update(update)
     assert dict(s) == expected
-
-
-def test_filters(mock_empty_os_environ):
-    """Test filter functionality based on docstring example."""
-    os.environ.update(dict(
-        MY_APP_SECTION1__SUBSECTION1='test1',
-        MY_APP_SECTION2__SUBSECTION2='test2',
-        MY_APP_SECTION2__SUBSECTION3='test3',
-        MY_APP_SECTION3='not_captured',
-    ))
-    settings_map = settings_parser.Settings(prefix='MY_APP', filters=['section1', {'section2': '*'}])
-    assert dict(settings_map) == {'subsection1': 'test1', 'subsection2': 'test2', 'subsection3': 'test3'}
 
 
 def test_temporary_changes():
@@ -304,17 +269,37 @@ def test_cli_utils(mock_empty_os_environ, mock_settings_file, mode, option_name,
             '\n').format(option_name, option_name[0])
 
 
-def test_get_configuration_file(mock_empty_os_environ, mock_settings_file, tmpdir):
+@pytest.mark.parametrize('style', ['.toml', '.json', '.yaml'])
+def test_to_config(mock_empty_os_environ, mock_settings_file, tmpdir, style):
     """Test writing out an example configuration file."""
     settings_file_path, expected = mock_settings_file
     settings_map = settings_parser.Settings(prefix='TEST_STUFF',
                                             settings_files=settings_file_path)
-    s = settings_map.get_configuration_file()
-    expected = mock_settings_file[1]
-    assert toml.loads(s) == expected
+    s = settings_map.to_config(style=style)
+    if style == '.toml':
+        expected = mock_settings_file[1]
+        assert toml.loads(s) == expected
+    else:
+        assert s
 
     subdir = tmpdir.mkdir('config_write_subdir')
-    p = subdir.join('example_settings.toml')
-    s = settings_map.get_configuration_file(str(p))
+    p = subdir.join('example_settings' + style)
+    s = settings_map.to_config(save_to=str(p))
 
-    assert toml.load(str(p)) == expected
+    if style == '.toml':
+        assert toml.load(str(p)) == expected
+    else:
+        assert p.read()
+
+
+@pytest.mark.parametrize('update', [False, True])
+def test_setup_logging(monkeypatch, update):
+    """Check that the setup_logging method intializes the logger and respects updates."""
+    mock_dict_config = MagicMock()
+    monkeypatch.setattr('climatecontrol.settings_parser.logging_config.dictConfig', mock_dict_config)
+    settings_map = settings_parser.Settings(prefix='TEST_STUFF')
+    if update:
+        settings_map.update({'logging': {'root': {'level': 'DEBUG'}}})
+    settings_map.setup_logging()
+    assert mock_dict_config.call_count == 1
+    assert mock_dict_config.call_args[0][0]['root']['level'] == 'DEBUG' if update else 'INFO'
