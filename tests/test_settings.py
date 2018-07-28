@@ -1,12 +1,15 @@
 """Test settings."""
 
-import click
-from click.testing import CliRunner
 import json
+import logging
 import os
-import pytest
 from collections.abc import Mapping
 from unittest.mock import MagicMock
+import sys
+
+import click
+from click.testing import CliRunner
+import pytest
 import toml
 
 from climatecontrol import settings_parser, cli_utils  # noqa: E402
@@ -175,6 +178,7 @@ def test_settings_multiple_files_and_env(mock_os_environ, mock_settings_files, t
     result.
 
     """
+    caplog.set_level(logging.DEBUG)
     settings_map = settings_parser.Settings(
         prefix='TEST_STUFF',
         settings_files=mock_settings_files[0])
@@ -193,7 +197,8 @@ def test_settings_multiple_files_and_env(mock_os_environ, mock_settings_files, t
     }
 
     # Check that the logs are correctly printed.
-    assert caplog.record_tuples == [
+    record_tuples = caplog.record_tuples
+    expected = [
         ('climatecontrol.settings_parser', 20, 'Settings key testvar_inline_1 set to contents of file foo'),
         ('climatecontrol.settings_parser', 20, 'Settings key testvar_inline_2 set to contents of file foo'),
         ('climatecontrol.settings_parser', 10, 'Assigned settings from {}: ["testgroup.testvar", "testgroup.testvar_inline_1", "othergroup.blabla", "othergroup.testvar_inline_2"]'.format(mock_settings_files[0][0])),  # noqa: 501
@@ -203,6 +208,19 @@ def test_settings_multiple_files_and_env(mock_os_environ, mock_settings_files, t
         ('climatecontrol.env_parser', 20, 'Parsed setting from env var: TEST_STUFF_TESTGROUP_TEST_VAR.'),
         ('climatecontrol.settings_parser', 10, 'Assigned settings from environment variables: ["testgroup.test_var", "testgroup.testvar", "testgroup_test_var"]')  # noqa: 501
     ]
+    assert len(record_tuples) == len(expected)
+    if sys.version_info[:2] >= (3, 6):
+        assert record_tuples == expected
+    else:
+        # for python < 3.6 dictionaries are not ordered. For this reason it is
+        # very hard to figure out in what order the hierarchies actually come
+        # out.
+        unambiguous_indices = [0, 1, 4, 5, 6]
+        set(record_tuples[i] for i in unambiguous_indices) == set(expected[i] for i in unambiguous_indices)
+        for i in [2, 3, 7]:
+            assert 'Assigned settings from' in record_tuples[2][2]
+        assert '"testgroup.testvar"' in record_tuples[2][2]
+        assert str(mock_settings_files[0][0]) in record_tuples[2][2]
 
 
 def test_nested_settings_files(tmpdir):
