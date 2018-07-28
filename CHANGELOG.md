@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.7] - 2018-07-28
+
 ### Removed
 
 - Remove deprecated `max_depth` option for `EnvParser`/`Settings`.  Use `implicit_depth` instead.
