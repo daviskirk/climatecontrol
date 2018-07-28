@@ -4,6 +4,7 @@
 
 ### Removed
 
+- Remove deprecated `max_depth` option for `EnvParser`/`Settings`.  Use `implicit_depth` instead.
 - Removed unneeded (and undocumented) features:
   - Filtering (error-prone and undocumented)
   - Dynamic preparsers (should now be handled through subclassing)
@@ -14,7 +15,7 @@
 
 ### Fixed
 
-- #13 : Update fragments (seperate files) are now preprocessed seperately.
+- #13 : Update fragments (separate files) are now preprocessed separately.
   "from_file" variables can no longer override subsequent file settings.
 
 ### Added
