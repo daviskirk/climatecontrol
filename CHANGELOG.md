@@ -19,7 +19,9 @@
 ### Added
 
 - Add serialization to json and yaml when generating configurations.
-
+- Allow "from_file" modules to be parsed recursively (if a from_file setting is
+  set to a json/yaml/toml file, it's contents will be parsed as a settings file
+  instead of a simple string)
 
 ## [0.6] - 2018-04-23
 

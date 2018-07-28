@@ -36,11 +36,19 @@ class SettingsValidationError(ValueError):
     """Failed to validate settings."""
 
 
-class SettingsFileError(ValueError):
+class SettingsLoadError(ValueError):
     """Settings file is neither path nor content."""
 
 
-class SettingsLoadError(SettingsFileError):
+class ContentLoadError(SettingsLoadError):
+    """Contents could not be loaded."""
+
+
+class FileLoadError(SettingsLoadError):
+    """Contents could not be loaded."""
+
+
+class NoCompatibleLoaderFoundError(SettingsLoadError):
     """Settings could not be loaded do to format or file being incompatible."""
 
 
@@ -260,18 +268,21 @@ class Settings(Mapping):
             return cast(T, data)
         for k, v in items:
             if isinstance(v, str) and isinstance(k, str) and k.lower().endswith(postfix_trigger):
+                key_with_postfix = k
+                filepath = v
+                # Reassign value (v) using the contents of the file.
                 try:
-                    with open(v) as f:
-                        v_from_file = f.read().rstrip()
+                    v = load_from_filepath(filepath, allow_unknown_file_type=True)
                 except FileNotFoundError as e:
-                    logger.info('Error while trying to load variable from file: %s. Skipping...', e)
+                    logger.info('Error while trying to load variable from file: %s. (%s) Skipping...',
+                                filepath, e.args[0])
                 else:
-                    new_key = k[:-len(postfix_trigger)]
-                    new_data[new_key] = v_from_file
-                    logger.info('Settings key %s set to contents of file %s', new_key, v)
+                    k = k[:-len(postfix_trigger)]  # Use the "actual" key from here on.
+                    new_data[k] = v
+                    logger.info('Settings key %s set to contents of file %s', k, v)
                 finally:
-                    del new_data[k]
-            elif isinstance(v, (Mapping, Sequence)) and not isinstance(v, str):
+                    del new_data[key_with_postfix]
+            if isinstance(v, (Mapping, Sequence)) and not isinstance(v, str):
                 parsed_v = self._render_from_file_vars(v)
                 new_data[k] = parsed_v
         return new_data
@@ -303,7 +314,7 @@ class Settings(Mapping):
 
     def _iter_load_files(self) -> Iterator[Dict[str, Any]]:
         for settings_file in self.settings_files:
-            file_update = read_file(settings_file, raise_error=True)
+            file_update = load_from_filepath_or_content(settings_file)
             yield file_update
 
     def _load_env_file(self) -> Dict[str, Any]:
@@ -522,7 +533,7 @@ class EnvParser:
         if include_file:
             settings_file = os.environ.get(self.settings_file_env_var)
             if settings_file:
-                yield EnvSetting(self.settings_file_env_var, read_file(settings_file))
+                yield EnvSetting(self.settings_file_env_var, load_from_filepath_or_content(settings_file))
 
     def _strip_split_char(self, s):
         if s.startswith(self.split_char):
@@ -535,53 +546,71 @@ class EnvParser:
     def _get_env_var_value(env_var: str) -> Any:
         """Parse an environment variable value using the toml parser."""
         v = os.environ[env_var]
-        try:
-            if toml._load_value.__code__.co_argcount == 1:
-                return toml._load_value(v)[0]  # for toml version < 0.9.3
-            else:
-                return toml._load_value(v, dict)[0]
-        except (ValueError, TypeError, IndexError, toml.TomlDecodeError):
-            return v
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                pass
+        return v
 
 
-def read_file(path_or_content: str, raise_error: bool = False) -> Dict[str, Any]:
-    """Read settings file.
+def load_from_filepath(filepath: str, allow_unknown_file_type=False):
+    """Read settings file from a filepath.
+
+    Returns:
+        Data structure loaded/parsed from a compatible `FileLoader`. If no
+        compatible file loaded can be found and `allow_unknown_file_type` is
+        set, return the raw file contents (if `allow_unknown_file_type` is not
+        set we raise an error on this case).
+
+    Raises:
+        SettingsLoadError
+
+    """
+    try:
+        return load_from_filepath_or_content(filepath, _allow_content=False)
+    except NoCompatibleLoaderFoundError:
+        if not allow_unknown_file_type:
+            raise
+        # Load the raw contents from file and assume that they are to be
+        # interpreted as a raw string.
+        with open(filepath) as f:
+            return f.read().strip()
+
+
+def load_from_filepath_or_content(path_or_content: str, _allow_content=True) -> Dict[str, Any]:
+    """Read settings file from a filepath or from a string representing the file contents.
 
     If ``path_or_content`` is a valid filename, load the file. If
-    ``path_or_content`` represents a toml string instead (for example the
-    contents of a toml file), parse the string directly.
+    ``path_or_content`` represents a json, yaml or toml string instead (the
+    contents of a json/toml/yaml file), parse the string directly.
 
-    Note that toml, yaml and json files are read. If ``path_or_content`` is a
+    Note that json, yaml and toml files are read. If ``path_or_content`` is a
     string, we will try to guess what file type you meant. Note that this last
     feature is not perfect!
 
     Args:
         path_or_content: Path to file or file contents
 
-        raise_error: If set to ``True`` and ``path_or_content`` are neither a
-            valid path nor valid toml content, raise a ``SettingsFileError``.
-
     Raises:
-        SettingsFileError
+        FileLoadError: when an error occurs during the loading of a file.
+        ContentLoadError: when an error occurs during the loading of file contents.
+        NoCompatibleLoaderFoundError: when no compatible loader was found for
+            this filepath or content type.
 
     """
     file_data = {}  # type: Dict
-    if path_or_content:
-        loaders = [TomlLoader, YamlLoader, JsonLoader]
-        successful_load = None  # Type
-        for loader in loaders:
-            try:
-                file_data = loader.load(path_or_content)
-            except SettingsLoadError:
-                pass
-            else:
-                successful_load = loader
-                break
-        if raise_error and not successful_load:
-            raise SettingsFileError('``path_or_content`` is neither path nor content!'
-                                    '\nFailed to load:\n{}'.format(path_or_content))
-        else:
-            logger.debug('No settings file data loaded!')
+    if not path_or_content:
+        return file_data
+    for loader in FileLoader.registered_loaders:
+        if loader.is_path(path_or_content):
+            file_data = loader.from_path(path_or_content)
+            break
+        if _allow_content and loader.is_content(path_or_content):
+            file_data = loader.from_content(path_or_content)
+            break
+    else:
+        raise NoCompatibleLoaderFoundError('Failed to load settings. No compatible loader: {}'.format(path_or_content))
     return file_data
 
 
@@ -601,53 +630,72 @@ class FileLoader(ABC):
 
     valid_file_extensions = ()  # type: Tuple[str, ...]
     valid_content_start = ()  # type: Tuple
+    registered_loaders = []  # type: List[FileLoader]
 
     @classmethod
     @abstractmethod
     def from_path(cls, path: str) -> Any:
         """Load serialized data from file at path."""
-        pass
 
     @classmethod
     @abstractmethod
     def from_content(cls, content: str) -> Any:
         """Load serialized data from content."""
-        pass
 
     @classmethod
     @abstractmethod
     def to_content(cls, data: Mapping) -> str:
         """Serialize data to string."""
-        pass
 
     @classmethod
-    def load(cls, path_or_content: str) -> Any:
-        """Load serialized data from file at path or from content."""
-        if not isinstance(path_or_content, str):
-            raise TypeError('Expected "path_or_content" to be of type str, got {}'.format(type(path_or_content)))
-        if cls._is_path(path_or_content):
-            logger.info('Loaded settings from file at path: {}'.format(path_or_content))
-            return cls.from_path(path_or_content)
-        elif cls._is_content(path_or_content):
-            logger.debug('Loaded settings from string.')
-            return cls.from_content(path_or_content)
-        else:
-            raise SettingsLoadError('path or content could not be loaded using {}'.format(cls.__name__))
-
-    @classmethod
-    def _is_content(cls, path_or_content):
+    def is_content(cls, path_or_content):
         """Check if argument is file content."""
         return any(path_or_content.lstrip().startswith(s) for s in cls.valid_content_start)
 
     @classmethod
-    def _is_path(cls, path_or_content: str):
-        """Check if argument is a file path."""
+    def is_path(cls, path_or_content: str):
+        """Check if argument is a valid file path.
+
+        If `only_existing` is set to ``True``, paths to files that don't exist
+        will also return ``False``.
+        """
         return (
-            os.path.isfile(path_or_content) and
+            len(str(path_or_content).strip().splitlines()) == 1 and
             (os.path.splitext(path_or_content)[1] in cls.valid_file_extensions)
         )
 
+    @classmethod
+    def register(cls, class_to_register):
+        """Register class as a valid file loader."""
+        cls.registered_loaders.append(class_to_register)
+        return class_to_register
 
+
+@FileLoader.register
+class JsonLoader(FileLoader):
+    """FileLoader for .json files."""
+
+    valid_file_extensions = ('.json',)
+    valid_content_start = ('{',)
+
+    @classmethod
+    def from_content(cls, content: str) -> Any:
+        """Load json from string."""
+        return json.loads(content)
+
+    @classmethod
+    def from_path(cls, path: str):
+        """Load json from file at path."""
+        with open(path) as f:
+            return json.load(f)
+
+    @classmethod
+    def to_content(cls, data: Mapping) -> str:
+        """Serialize mapping to string."""
+        return json.dumps(data, indent=4)
+
+
+@FileLoader.register
 class YamlLoader(FileLoader):
     """FileLoader for .yaml files."""
 
@@ -681,29 +729,7 @@ class YamlLoader(FileLoader):
             raise ImportError('"pyyaml" package needs to be installed to parse yaml files.')
 
 
-class JsonLoader(FileLoader):
-    """FileLoader for .json files."""
-
-    valid_file_extensions = ('.json',)
-    valid_content_start = ('{',)
-
-    @classmethod
-    def from_content(cls, content: str) -> Any:
-        """Load json from string."""
-        return json.loads(content)
-
-    @classmethod
-    def from_path(cls, path: str):
-        """Load json from file at path."""
-        with open(path) as f:
-            return json.load(f)
-
-    @classmethod
-    def to_content(cls, data: Mapping) -> str:
-        """Serialize mapping to string."""
-        return json.dumps(data, indent=4)
-
-
+@FileLoader.register
 class TomlLoader(FileLoader):
     """FileLoader for .toml files."""
 

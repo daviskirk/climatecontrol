@@ -7,4 +7,4 @@ namespaced environment variables.
 
 """
 
-from .settings_parser import Settings, SettingsValidationError, SettingsFileError  # noqa: F401
+from .settings_parser import Settings, SettingsValidationError, SettingsLoadError  # noqa: F401
