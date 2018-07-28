@@ -50,12 +50,12 @@ def file_extension(request, monkeypatch):
     ext, mock_other = request.param
     if mock_other:
         if ext == '.toml':
-            monkeypatch.setattr('climatecontrol.settings_parser.yaml', None)
+            monkeypatch.setattr('climatecontrol.file_loaders.yaml', None)
         elif ext in {'.yml', '.yaml'}:
-            monkeypatch.setattr('climatecontrol.settings_parser.toml', None)
+            monkeypatch.setattr('climatecontrol.file_loaders.toml', None)
         else:
-            monkeypatch.setattr('climatecontrol.settings_parser.yaml', None)
-            monkeypatch.setattr('climatecontrol.settings_parser.toml', None)
+            monkeypatch.setattr('climatecontrol.file_loaders.yaml', None)
+            monkeypatch.setattr('climatecontrol.file_loaders.toml', None)
     return ext
 
 

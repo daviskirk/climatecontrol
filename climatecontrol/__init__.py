@@ -7,4 +7,8 @@ namespaced environment variables.
 
 """
 
-from .settings_parser import Settings, SettingsValidationError, SettingsLoadError  # noqa: F401
+from .exceptions import SettingsLoadError, SettingsValidationError
+from .settings_parser import Settings
+
+
+__all__ = ['Settings', 'SettingsValidationError', 'SettingsLoadError']

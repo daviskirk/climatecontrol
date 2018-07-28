@@ -1,10 +1,10 @@
 """Test settings."""
 
-import sys
 import os
+
 import pytest
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from climatecontrol import settings_parser  # noqa: E402
+
+from climatecontrol.env_parser import EnvParser  # noqa: I100
 
 
 @pytest.mark.parametrize('attr, value, expected', [
@@ -14,7 +14,7 @@ from climatecontrol import settings_parser  # noqa: E402
 ])
 def test_env_parser_assign(mock_empty_os_environ, attr, value, expected):
     """Check that we can assign attributes of env parser."""
-    s = settings_parser.EnvParser(prefix='this', settings_file_suffix='suffix')
+    s = EnvParser(prefix='this', settings_file_suffix='suffix')
     assert s.prefix == 'THIS_'
     assert s.settings_file_suffix == 'suffix'
     assert s.settings_file_env_var == 'THIS_SUFFIX'
@@ -29,7 +29,6 @@ def test_env_parser_assign(mock_empty_os_environ, attr, value, expected):
             assert s.settings_file_env_var == 'THIS_' + expected.upper()
 
 
-@pytest.mark.parametrize('implicit_depth_arg', ['max_depth', 'implicit_depth'])
 @pytest.mark.parametrize('prefix, implicit_depth, split_char, expected', [
     ('TEST_STUFF', 1, '_', {'testgroup': {'testvar': 7, 'test_var': 9}}),
     ('TEST_STUFF', 1, '-', {}),
@@ -37,13 +36,12 @@ def test_env_parser_assign(mock_empty_os_environ, attr, value, expected):
     ('TEST_STUFF_', 1, '_', {'testgroup': {'testvar': 7, 'test_var': 9}}),
     ('TEST_STUFFING', 1, '_', {}),
 ])
-def test_parse_environment_vars(mock_os_environ, prefix, implicit_depth_arg, implicit_depth, split_char, expected):
+def test_parse_environment_vars(mock_os_environ, prefix, implicit_depth, split_char, expected):
     """Check that we can parse settings from variables."""
-    implicit_depth_kwarg = {implicit_depth_arg: implicit_depth}
-    env_parser = settings_parser.EnvParser(
+    env_parser = EnvParser(
         prefix=prefix,
         split_char=split_char,
-        **implicit_depth_kwarg)
+        implicit_depth=implicit_depth)
     result = env_parser.parse()
     assert result == expected
 
@@ -113,6 +111,6 @@ def test_parse_environment_vars(mock_os_environ, prefix, implicit_depth_arg, imp
 def test_parse_toml(monkeypatch, implicit_depth, environ, expected):
     """Check that we can parse toml from environment variables."""
     monkeypatch.setattr(os, 'environ', environ)
-    env_parser = settings_parser.EnvParser(prefix='TEST_STUFF', implicit_depth=implicit_depth)
+    env_parser = EnvParser(prefix='TEST_STUFF', implicit_depth=implicit_depth)
     result = env_parser.parse()
     assert result == expected

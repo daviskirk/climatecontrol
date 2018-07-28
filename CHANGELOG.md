@@ -10,6 +10,7 @@
   - Ordering of source loading (should now be handled through subclassing)
   - Remove hard dependency on toml (if no serialization libraries like toml or
     yaml are installed, will fall back to json).
+  - Remove unneeded `logtools` module.
 
 ### Fixed
 
@@ -22,6 +23,7 @@
 - Allow "from_file" modules to be parsed recursively (if a from_file setting is
   set to a json/yaml/toml file, it's contents will be parsed as a settings file
   instead of a simple string)
+- Add debug logging which settings attributes were set.
 
 ## [0.6] - 2018-04-23
 

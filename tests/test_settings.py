@@ -3,14 +3,14 @@
 import click
 from click.testing import CliRunner
 import json
-import sys
 import os
 import pytest
 from collections.abc import Mapping
 from unittest.mock import MagicMock
 import toml
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from climatecontrol import settings_parser, cli_utils  # noqa: E402
+from climatecontrol.exceptions import NoCompatibleLoaderFoundError
 
 
 def test_settings_empty(mock_empty_os_environ):
@@ -82,7 +82,7 @@ def test_parse_from_file_vars(original, file_exists, mock_os_environ, tmpdir):
 @pytest.mark.parametrize('settings_files', ['asd;kjhaflkjhasf', '.', '/home/', ['.', 'asd;kjhaflkjhasf']])
 def test_settings_files_fail(mock_empty_os_environ, settings_files):
     """Check that passing invalid settings files really results in errors."""
-    with pytest.raises(settings_parser.NoCompatibleLoaderFoundError):
+    with pytest.raises(NoCompatibleLoaderFoundError):
         settings_parser.Settings(prefix='TEST_STUFF',
                                  settings_files='asdlijasdlkjaa')
 
@@ -93,7 +93,7 @@ def test_yaml_import_fail(mock_empty_os_environ, monkeypatch):
     # Check that without mocking everything is file:
     settings_parser.Settings(prefix='TEST_STUFF', settings_files=file_str)
     # Now fake not having imported yaml
-    monkeypatch.setattr('climatecontrol.settings_parser.yaml', None)
+    monkeypatch.setattr('climatecontrol.file_loaders.yaml', None)
     with pytest.raises(ImportError):
         settings_parser.Settings(prefix='TEST_STUFF', settings_files='---\na: 5')
 
@@ -104,7 +104,7 @@ def test_toml_import_fail(mock_empty_os_environ, monkeypatch):
     # Check that without mocking everything is file:
     settings_parser.Settings(prefix='TEST_STUFF', settings_files=file_str)
     # Now fake not having imported yaml
-    monkeypatch.setattr('climatecontrol.settings_parser.toml', None)
+    monkeypatch.setattr('climatecontrol.file_loaders.toml', None)
     with pytest.raises(ImportError):
         settings_parser.Settings(prefix='TEST_STUFF', settings_files=file_str)
 
@@ -121,9 +121,9 @@ def test_settings_file_content(mock_empty_os_environ, settings_file_content):
 
 
 @pytest.mark.parametrize('settings_file_content,error', [
-    ('a:\n  b: 5\n', settings_parser.NoCompatibleLoaderFoundError),  # no file loader with "a" as valid start
+    ('a:\n  b: 5\n', NoCompatibleLoaderFoundError),  # no file loader with "a" as valid start
     ('[{"a": {"b": 5}}]', toml.TomlDecodeError),  # json must be object, seeing "[" assumes a toml file
-    ('b=5', settings_parser.NoCompatibleLoaderFoundError)  # toml file has to start with [ or it is not parsable
+    ('b=5', NoCompatibleLoaderFoundError)  # toml file has to start with [ or it is not parsable
 ])
 def test_settings_file_content_fail(mock_empty_os_environ, settings_file_content, error):
     """Check parsing file content from different file types raises an error on incorrect file content."""
@@ -165,11 +165,14 @@ def test_settings_env_file_and_env(mock_env_settings_file, tmpdir):
     }
 
 
-def test_settings_multiple_files_and_env(mock_os_environ, mock_settings_files, tmpdir):
+def test_settings_multiple_files_and_env(mock_os_environ, mock_settings_files, tmpdir, caplog):
     """Check that using multiple settings files together with settings parsed from env variables works.
 
     Each subsequent settings file should override the last and environment vars
     should override any settings file vars.
+
+    Additionally check that the logs are fired correctly and have the correct
+    result.
 
     """
     settings_map = settings_parser.Settings(
@@ -188,6 +191,18 @@ def test_settings_multiple_files_and_env(mock_os_environ, mock_settings_files, t
         },
         'testgroup_test_var': 9
     }
+
+    # Check that the logs are correctly printed.
+    assert caplog.record_tuples == [
+        ('climatecontrol.settings_parser', 20, 'Settings key testvar_inline_1 set to contents of file foo'),
+        ('climatecontrol.settings_parser', 20, 'Settings key testvar_inline_2 set to contents of file foo'),
+        ('climatecontrol.settings_parser', 10, 'Assigned settings from {}: ["testgroup.testvar", "testgroup.testvar_inline_1", "othergroup.blabla", "othergroup.testvar_inline_2"]'.format(mock_settings_files[0][0])),  # noqa: 501
+        ('climatecontrol.settings_parser', 10, 'Assigned settings from {}: ["othergroup.blabla", "othergroup.testvar_inline_2"]'.format(mock_settings_files[0][1])),  # noqa: 501
+        ('climatecontrol.env_parser', 20, 'Parsed setting from env var: TEST_STUFF_TESTGROUP__TEST_VAR.'),
+        ('climatecontrol.env_parser', 20, 'Parsed setting from env var: TEST_STUFF_TESTGROUP__TESTVAR.'),
+        ('climatecontrol.env_parser', 20, 'Parsed setting from env var: TEST_STUFF_TESTGROUP_TEST_VAR.'),
+        ('climatecontrol.settings_parser', 10, 'Assigned settings from environment variables: ["testgroup.test_var", "testgroup.testvar", "testgroup_test_var"]')  # noqa: 501
+    ]
 
 
 def test_nested_settings_files(tmpdir):
