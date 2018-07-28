@@ -2,6 +2,30 @@
 
 ## [Unreleased]
 
+### Removed
+
+- Remove deprecated `max_depth` option for `EnvParser`/`Settings`.  Use `implicit_depth` instead.
+- Removed unneeded (and undocumented) features:
+  - Filtering (error-prone and undocumented)
+  - Dynamic preparsers (should now be handled through subclassing)
+  - Ordering of source loading (should now be handled through subclassing)
+  - Remove hard dependency on toml (if no serialization libraries like toml or
+    yaml are installed, will fall back to json).
+  - Remove unneeded `logtools` module.
+
+### Fixed
+
+- #13 : Update fragments (separate files) are now preprocessed separately.
+  "from_file" variables can no longer override subsequent file settings.
+
+### Added
+
+- Add serialization to json and yaml when generating configurations.
+- Allow "from_file" modules to be parsed recursively (if a from_file setting is
+  set to a json/yaml/toml file, it's contents will be parsed as a settings file
+  instead of a simple string)
+- Add debug logging which settings attributes were set.
+
 ## [0.6] - 2018-04-23
 
 ### Added

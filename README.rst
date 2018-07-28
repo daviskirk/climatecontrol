@@ -196,6 +196,14 @@ save it to a file like "cli.py" and then call it after installing click:
 
 whithout needing to set any env vars.
 
+Multiple files are supported. They will be automatically recursively merged
+with the last file overriting any overlapping keys of the first file.
+
+.. code:: sh
+
+   pip install click
+   python cli.py --settings ./my_settings_file.toml  --settings ./my_settings_file.yaml
+
 
 Testing
 -------
