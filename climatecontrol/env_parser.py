@@ -3,7 +3,6 @@
 import json
 import logging
 import os
-import warnings
 from typing import Any, Dict, Iterator, Mapping, NamedTuple, Sequence, Set
 
 from .file_loaders import load_from_filepath_or_content
@@ -61,18 +60,11 @@ class EnvParser:
                  prefix: str = 'APP_SETTINGS',
                  split_char: str = '_',
                  implicit_depth: int = 0,
-                 max_depth=None,
                  settings_file_suffix: str = 'SETTINGS_FILE',
                  exclude: Sequence[str] = ()) -> None:
         """Initialize object."""
         self.settings_file_suffix = str(settings_file_suffix)
-        if max_depth is not None:
-            # Use warnings module as logging probably isn't configured yet at this stage of the app.
-            warnings.warn('`max_depth` is deprecated and will be removed '
-                          'in next release. Please use `implicit_depth` instead.')
-            self.implicit_depth = int(max_depth)
-        else:
-            self.implicit_depth = int(implicit_depth)
+        self.implicit_depth = int(implicit_depth)
         self.split_char = split_char
         self.prefix = prefix
         self.exclude = exclude
