@@ -379,14 +379,19 @@ def test_to_config(mock_empty_os_environ, mock_settings_file, tmpdir, file_exten
         assert p.read()
 
 
-@pytest.mark.parametrize('update', [False, True])
-def test_setup_logging(monkeypatch, update):
+@pytest.mark.parametrize('update', [False, 'manual', 'env'])
+def test_setup_logging(monkeypatch, update, mock_empty_os_environ):
     """Check that the setup_logging method intializes the logger and respects updates."""
     mock_dict_config = MagicMock()
     monkeypatch.setattr('climatecontrol.settings_parser.logging_config.dictConfig', mock_dict_config)
+    if update == 'env':
+        os.environ['TEST_STUFF_LOGGING__ROOT__LEVEL'] = 'DEBUG'
     settings_map = settings_parser.Settings(prefix='TEST_STUFF')
-    if update:
+    if update == 'manual':
         settings_map.update({'logging': {'root': {'level': 'DEBUG'}}})
+    settings_map.update()
     settings_map.setup_logging()
     assert mock_dict_config.call_count == 1
+    assert 'handlers' in mock_dict_config.call_args[0][0]['root'], \
+        'Expected default logging configuration to be updated, not overwritten.'
     assert mock_dict_config.call_args[0][0]['root']['level'] == 'DEBUG' if update else 'INFO'

@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [0.7.1] - 2018-08-14
+
+### Fixed
+
+- Logging settings update recursively and do not overwrite unrelated defaults
+
+### Removed
+
+- Actually remove deprecated `max_depth` (see 0.7)
+
+
 ## [0.7] - 2018-07-28
 
 ### Removed

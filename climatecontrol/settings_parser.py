@@ -178,7 +178,7 @@ class Settings(Mapping):
         logging_settings = deepcopy(DEFAULT_LOG_SETTINGS)
         logging_settings_update = self.get(logging_section, {})
         if logging_settings_update:
-            logging_settings.update(logging_settings_update)
+            update_nested(logging_settings, logging_settings_update)
         logging_config.dictConfig(logging_settings)
 
     def click_settings_file_option(self, **kw) -> Callable:
