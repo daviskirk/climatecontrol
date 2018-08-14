@@ -1,4 +1,4 @@
-|Build Status| |Coverage Status| |PyPi Status|
+|Build Status| |Coverage Status| |PyPi Status| |PyPI license|
 
 
 CLIMATECONTROL
@@ -240,6 +240,10 @@ Do to the use of modern python features, only python 3.5 and above are supported
    :target: https://coveralls.io/github/daviskirk/climatecontrol?branch=master
 .. |PyPi Status| image:: https://badge.fury.io/py/climatecontrol.svg
    :target: https://badge.fury.io/py/climatecontrol
+.. |PyPI license| image:: https://img.shields.io/pypi/l/ansicolortags.svg
+   :target: https://pypi.python.org/pypi/ansicolortags/
+.. |PyPI pyversions| image:: https://img.shields.io/pypi/pyversions/climatecontrol.svg
+   :target: https://pypi.python.org/pypi/climatecontrol/
 .. _click: http://click.pocoo.org/
 .. _toml: https://github.com/toml-lang/toml
 .. _secrets: https://docs.docker.com/engine/swarm/secrets
