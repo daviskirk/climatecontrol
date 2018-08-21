@@ -198,9 +198,10 @@ def test_settings_multiple_files_and_env(mock_os_environ, mock_settings_files, t
 
     # Check that the logs are correctly printed.
     record_tuples = caplog.record_tuples
+    secret_file_path_str = str(tmpdir / 'sub2' / 'secret.txt')
     expected = [
-        ('climatecontrol.settings_parser', 20, 'Settings key testvar_inline_1 set to contents of file foo'),
-        ('climatecontrol.settings_parser', 20, 'Settings key testvar_inline_2 set to contents of file foo'),
+        ('climatecontrol.settings_parser', 20, 'Settings key testvar_inline_1 set to contents of file "{}"'.format(secret_file_path_str)),  # noqa: 501
+        ('climatecontrol.settings_parser', 20, 'Settings key testvar_inline_2 set to contents of file "{}"'.format(secret_file_path_str)),  # noqa: 501
         ('climatecontrol.settings_parser', 10, 'Assigned settings from {}: ["testgroup.testvar", "testgroup.testvar_inline_1", "othergroup.blabla", "othergroup.testvar_inline_2"]'.format(mock_settings_files[0][0])),  # noqa: 501
         ('climatecontrol.settings_parser', 10, 'Assigned settings from {}: ["othergroup.blabla", "othergroup.testvar_inline_2"]'.format(mock_settings_files[0][1])),  # noqa: 501
         ('climatecontrol.env_parser', 20, 'Parsed setting from env var: TEST_STUFF_TESTGROUP__TEST_VAR.'),

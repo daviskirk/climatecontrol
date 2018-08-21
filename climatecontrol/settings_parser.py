@@ -281,7 +281,7 @@ class Settings(Mapping):
                 else:
                     k = k[:-len(postfix_trigger)]  # Use the "actual" key from here on.
                     new_data[k] = v
-                    logger.info('Settings key %s set to contents of file %s', k, v)
+                    logger.info('Settings key %s set to contents of file "%s"', k, filepath)
                 finally:
                     del new_data[key_with_postfix]
             if isinstance(v, (Mapping, Sequence)) and not isinstance(v, str):
