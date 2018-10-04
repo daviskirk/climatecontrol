@@ -351,11 +351,14 @@ def test_cli_utils(mock_empty_os_environ, mock_settings_file, mode, option_name,
         args = ['--' + option_name, 'badlfkjasfkj']
         result = runner.invoke(tmp_cli, args)
         assert result.exit_code == 2
-        assert result.output == (
-            'Usage: tmp_cli [OPTIONS]\n\n'
+        expected_output = (
+            'Usage: tmp-cli [OPTIONS]\n'
+            'Try "tmp-cli --help" for help.\n\n'
             'Error: Invalid value for "--{}" / "-{}": '
-            'Path "badlfkjasfkj" does not exist.'
-            '\n').format(option_name, option_name[0])
+            'File "badlfkjasfkj" does not exist.'
+            '\n'
+        ).format(option_name, option_name[0])
+        assert result.output == expected_output
 
 
 def test_to_config(mock_empty_os_environ, mock_settings_file, tmpdir, file_extension):
