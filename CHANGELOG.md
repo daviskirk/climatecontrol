@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [0.7.2] - 2018-10-04
+
+### Fixed
+
+- Fix bug where value of "from_file" variable was logged instead of the file.
+
+### Added
+
+- Support for click 7.0
+
+
 ## [0.7.1] - 2018-08-14
 
 ### Fixed
