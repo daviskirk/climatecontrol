@@ -224,6 +224,37 @@ def test_settings_multiple_files_and_env(mock_os_environ, mock_settings_files, t
         assert str(mock_settings_files[0][0]) in record_tuples[2][2]
 
 
+@pytest.mark.parametrize('ending,content', [
+    ('.json', '["this", "that"]\n'),
+    ('.yml', '[this, that]\n'),
+    pytest.mark.xfail(('.toml', '[\'this\', \'that\']'), reason='toml literal lists are not supported')
+])
+def test_parse_from_file_list(ending, content, mock_os_environ, tmpdir):
+    """Check that the "from_file" extension works as expected.
+
+    Adding the "from_file" suffix should result in the variable being read from
+    the file and not directly. In addition, a file ending indicating a
+    structured format (like json, toml or yaml) should allow the user to read
+    structures from files (in this case simple lists).
+
+    Note that the toml parser can not (as of 2018-11) interpret top level lists
+    as such, so specifying a toml file holding only a list will not work as
+    expected.
+
+    """
+    settings_map = settings_parser.Settings(update_on_init=False)
+    filepath = tmpdir.join('testvarfile' + ending)
+    filename = str(filepath)
+    with open(filename, 'w') as f:
+        f.write(content)
+    update_dict = {'this_var_from_file': filename}
+    settings_map.update(update_dict)
+    assert isinstance(settings_map, Mapping)
+    actual = dict(settings_map)
+    expected = {'this_var': ["this", "that"]}
+    assert actual == expected
+
+
 def test_nested_settings_files(tmpdir):
     """Check that parsing of nested "from_file" settings files works as expected.
 

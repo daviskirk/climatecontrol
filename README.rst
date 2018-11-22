@@ -124,16 +124,32 @@ Settings file support
 
 If you don't want to use an environment variable for every single setting and
 want to put your settings in a single file instead you can to this as well.
-Settings files can be toml_ files (`.toml`), yaml files (`.yml`) or json files (`.json`).
+Settings files can be yaml files (`.yml`/ `.yaml`), json files (`.json`) or toml_ files (`.toml`).
 
-.. code:: sh
+.. code-block:: sh
 
-   export MY_APP_SETTINGS_FILE=./my_settings_file.toml
+   export MY_APP_SETTINGS_FILE=./my_settings_file.yml
 
 
 The file could look like this:
 
-.. code::
+.. code-block:: yaml
+
+   section1:
+     subsection1 = test1
+
+   section2:
+     subsection2: test2
+     subsection3: test3
+
+
+or in toml form:
+
+.. code-block:: sh
+
+   export MY_APP_SETTINGS_FILE=./my_settings_file.toml
+
+.. code-block:: toml
 
    [section1]
    subsection1 = "test1"
@@ -143,8 +159,12 @@ The file could look like this:
    subsection3 = "test3"
 
 
+In the following documentation examples, yaml files will be used, but any
+examples will work using the other file syntaxes as well.
+
+
 Setting variables whos values are saved in files
-------------------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Sometimes we don't want to save values in plain text in environment files or in
 the settings file itself. Instead we have a file that contains the value of the
@@ -154,21 +174,59 @@ store secrets in temporary files.
 To read a variable from a file, simply add a `"_from_file"` to the variable
 name and give it the path to the file that contains the variable as a value.
 
-Using:
+Using a settings file with the contents (in this case yaml):
 
-.. code::
+.. code-block:: yaml
 
-   [section1]
-   subsection1_from_file = /home/myuser/supersecret.txt
+   section1:
+     subsection1_from_file: /home/myuser/supersecret.txt
 
-or
+or using an environment variable:
 
-.. code:: sh
+.. code-block:: sh
 
    export MY_APP_SECTION1_SUBSECTION1_FROM_FILE="/home/myuser/supersecret.txt"
 
 will both write the content of the file at `"/home/myuser/supersecret.txt"`
-into the variable `section1 -> sebsection1`.
+into the variable `section1 -> subsection1`.
+
+
+Nested settings files
+^^^^^^^^^^^^^^^^^^^^^
+
+In addition, file variables can also target other settings files directly. To
+do this, just make sure the target file is has an extension supported by
+climate control. A simple example is illustrated here. Given a settings file:
+
+.. code-block:: yaml
+
+   value1: "spam"
+   section1_from_file: /home/myuser/nestedfile.yaml
+
+
+where the content of `/home/myuser/nestedfile.yaml` is:
+
+.. code-block:: yaml
+
+   value2: "cheese"
+   subsection:
+     value3: "parrot"
+
+which would result in a settings structure:
+
+.. code-block:: python
+
+   {
+       "value1": "spam",
+       "section1": {
+           "value2": "cheese",
+           "subsection": {
+               "value3": "parrot"
+           }
+       }
+   }
+
+
 
 
 Command line support using click
@@ -178,7 +236,7 @@ The click_ library is a great tool for creating command line applications. If
 you don't want to have to use an environment to set your configuration file.
 Write your command line application like this:
 
-.. code:: python
+.. code-block:: python
 
    import click
 
@@ -189,7 +247,7 @@ Write your command line application like this:
 
 save it to a file like "cli.py" and then call it after installing click:
 
-.. code:: sh
+.. code-block:: sh
 
    pip install click
    python cli.py --settings ./my_settings_file.toml
@@ -199,7 +257,7 @@ whithout needing to set any env vars.
 Multiple files are supported. They will be automatically recursively merged
 with the last file overriting any overlapping keys of the first file.
 
-.. code:: sh
+.. code-block:: sh
 
    pip install click
    python cli.py --settings ./my_settings_file.toml  --settings ./my_settings_file.yaml
@@ -216,7 +274,7 @@ in tests can be tricky.
 The settings object provides a simple method for modifying your settings object
 temporarily:
 
-.. code:: python
+.. code-block:: python
 
    settings_map.update({'a': 1})
    # Enter a temporary changes context block:
@@ -228,8 +286,8 @@ temporarily:
    print(settings_map['a'])  # outputs: 1
 
 
-Limitations
------------
+Python version support
+----------------------
 
 Do to the use of modern python features, only python 3.5 and above are supported.
 
