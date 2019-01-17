@@ -149,7 +149,7 @@ or in toml form:
 
    export MY_APP_SETTINGS_FILE=./my_settings_file.toml
 
-.. code-block:: toml
+.. code-block:: sh
 
    [section1]
    subsection1 = "test1"

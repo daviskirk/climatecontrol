@@ -1,6 +1,6 @@
 name: climatecontrol
 dependencies:
-  - python>=3.5
+  - python=3.6
   - pyyaml
   - pip
   - pip:
