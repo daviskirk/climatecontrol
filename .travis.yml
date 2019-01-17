@@ -7,7 +7,7 @@ install:
 script:
   - flake8
   - mypy climatecontrol
-  - python setup.py test
+  - pip install "pytest>=3.8.1,<4.0" && python setup.py test
 after_success:
   - coveralls
 deploy:
