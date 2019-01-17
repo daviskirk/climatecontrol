@@ -12,10 +12,10 @@ requirements = [
 test_requirements = [
     'pytest-mock',
     'pytest-cov>=2.5.1',
-    'pytest>=3.2.1,<4.0.0',
     'toml>=0.9.2',
     'pyyaml',
     'click>=7.0',
+    'pytest>=3.2.1,<4.0.0',
 ]
 
 rootdir = os.path.abspath(os.path.dirname(__file__))
