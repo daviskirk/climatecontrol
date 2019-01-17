@@ -168,7 +168,7 @@ Setting variables whos values are saved in files
 
 Sometimes we don't want to save values in plain text in environment files or in
 the settings file itself. Instead we have a file that contains the value of the
-setting we want. A good example for this behaviour are docker _secrets that
+setting we want. A good example for this behaviour are docker secrets_ that
 store secrets in temporary files.
 
 To read a variable from a file, simply add a `"_from_file"` to the variable
