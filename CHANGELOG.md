@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [0.7.3] - 2019-01-17
+
+### Fixed
+
+- Fix update with bad config leaving the object in a broken state ( #15 )
+
+
 ## [0.7.2] - 2018-10-04
 
 ### Fixed
