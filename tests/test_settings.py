@@ -251,7 +251,7 @@ def test_parse_from_file_list(ending, content, mock_os_environ, tmpdir):
     settings_map.update(update_dict)
     assert isinstance(settings_map, Mapping)
     actual = dict(settings_map)
-    expected = {'this_var': ["this", "that"]}
+    expected = {'this_var': ['this', 'that']}
     assert actual == expected
 
 
@@ -327,6 +327,28 @@ def test_update(mock_empty_os_environ, mode):
         expected.update({'section2': {'new_env_value': 'new_env_data'}})
     s.update(update)
     assert dict(s) == expected
+
+
+def test_bad_config_recovery():
+    """Check that parsers that cause errors can recover correctly."""
+    def check(d):
+        if d and 'wrong' in d:
+            raise KeyError('Invalid config')
+        return d
+
+    s = settings_parser.Settings(prefix='this', settings_file_suffix='suffix', parser=check)
+    assert dict(s) == {}
+
+    # Try to set incorrect config
+    with pytest.raises(KeyError):
+        s.update({'wrong': 2})
+    assert dict(s) == {}, 'Setting should not have been updated'
+    assert dict(s.update_data) == {}, 'No external data should have been set.'
+
+    # Updating with other fields will still trigger the error
+    s.update({'right': 2})
+    assert dict(s) == {'right': 2}
+    assert dict(s.update_data) == {'right': 2}, 'External data should have been set.'
 
 
 def test_temporary_changes():

@@ -31,9 +31,9 @@ def click_settings_file_option(settings_obj: settings_parser.Settings,
 
         .. code-block:: bash
 
-           python cli.py --settings 'my_settings_file.toml'
+           python cli.py --settings 'my_settings_file.yaml'
 
-        will load settings from `my_settings_file.toml` into the `settings_map`
+        will load settings from `my_settings_file.yaml` into the `settings_map`
         object which can then be used in the script.
 
     """
@@ -43,7 +43,7 @@ def click_settings_file_option(settings_obj: settings_parser.Settings,
             settings_obj.update()
 
     option_kwargs = dict(
-        help='Settings file path for loading settings from toml file.',
+        help='Settings file path for loading settings from file.',
         callback=validate,
         type=click.Path(exists=True, dir_okay=False, resolve_path=True),
         expose_value=False,

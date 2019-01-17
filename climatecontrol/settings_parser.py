@@ -33,7 +33,7 @@ class Settings(Mapping):
     """A Settings instance allows settings to be loaded from a settings file or environment variables.
 
     Attributes:
-        settings_files: If set, a sequence of paths to settings files (toml
+        settings_files: If set, a sequence of paths to settings files (json, yaml or toml
             format) from which all settings are loaded. The files are
             loaded one after another with variables set in later files
             overwriting values set in previous files.
@@ -76,7 +76,7 @@ class Settings(Mapping):
         self.env_parser = EnvParser(**(env_parser_kwargs or {}))
         self.parser = parser
         self.settings_files = settings_files
-        self.external_data = {}  # type: Dict
+        self.update_data = {}  # type: dict
         self._data = {}  # type: Mapping
 
         if update_on_init:
@@ -119,7 +119,7 @@ class Settings(Mapping):
             files = (files,)
         self._settings_files = list(files)
 
-    def update(self, d: Optional[Union[Mapping, Dict]] = None, clear_external: bool = False) -> None:
+    def update(self, d: Optional[Union[Mapping, Dict]] = None, clear: bool = False) -> None:
         """Update object settings and reload files and environment variables.
 
         Args:
@@ -141,16 +141,29 @@ class Settings(Mapping):
             {'section': {'value': 'test', 'new_value': 'new'}, 'section2': {'new_env_value': 'new_env_data'}}
 
         """
-        settings_map = {}  # type: Dict
-        if clear_external:
-            self.external_data = {}
+        settings_map = {}  # type: dict
+
+        # External data is any data that was explicitely assigned through a
+        # call to :meth:`update`.
+        update_data = {} if clear else deepcopy(self.update_data)
         if d:
-            update_nested(self.external_data, d)
-        for fragment in self.iter_source_loaders():
-            fragment = Fragment(self.preprocess_fragment(fragment.data), fragment.source)
-            self._log_assignments(fragment)
-            update_nested(settings_map, fragment.data)
+            update_nested(update_data, d)
+
+        def update_fragment(fragment: Fragment) -> None:
+            preprocessed = Fragment(self.preprocess_fragment(fragment.data), fragment.source)
+            self._log_assignments(preprocessed)
+            update_nested(settings_map, preprocessed.data)
+
+        # Update settings
+        for fragment in self._iter_load_files():
+            update_fragment(fragment)
+        update_fragment(Fragment(self.env_parser.parse(), 'environment variables'))
+        update_fragment(Fragment(update_data, 'external'))
+
         self._data = self.parse(settings_map)
+
+        # If parsing was successfull, update external data
+        self.update_data = update_data
 
     def parse(self, data: Mapping) -> Mapping:
         """Parse data into settings.
@@ -185,17 +198,6 @@ class Settings(Mapping):
         """See :func:`cli_utils.click_settings_file_option`."""
         from . import cli_utils
         return cli_utils.click_settings_file_option(self, **kw)
-
-    def iter_source_loaders(self) -> Iterator:
-        """Iterate over functions to load settings from various sources.
-
-        Yields:
-            Each yielded item represents an updates to the settings data.
-
-        """
-        yield from self._iter_load_files()
-        yield self._load_env()
-        yield self._load_external()
 
     def preprocess_fragment(self, fragment: T) -> T:
         """Preprocess a settings fragment and return the new version."""
@@ -238,11 +240,11 @@ class Settings(Mapping):
         """
         archived_settings = deepcopy(self._data)
         archived_settings_files = deepcopy(self._settings_files)
-        archived_external_data = deepcopy(self.external_data)
+        archived_update_data = deepcopy(self.update_data)
         yield self
         self._data = archived_settings
         self._settings_files = archived_settings_files
-        self.external_data = archived_external_data
+        self.update_data = archived_update_data
 
     def _render_from_file_vars(self, data: T, postfix_trigger='_from_file') -> T:
         """Read and replace settings values from content local files.
@@ -293,13 +295,6 @@ class Settings(Mapping):
         for settings_file in self.settings_files:
             file_update = load_from_filepath_or_content(settings_file)
             yield Fragment(data=file_update, source=str(settings_file))
-
-    def _load_env(self) -> Fragment:
-        return Fragment(self.env_parser.parse(),
-                        'environment variables')
-
-    def _load_external(self) -> Fragment:
-        return Fragment(self.external_data, 'external')
 
     def _log_assignments(self, fragment: Fragment) -> None:
         messages = []
