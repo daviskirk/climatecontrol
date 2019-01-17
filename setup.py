@@ -13,7 +13,7 @@ test_requirements = [
     'click',
     'pytest-mock',
     'pytest-cov>=2.5.1',
-    'pytest>=3.2.1',
+    'pytest>=3.2.1,<4.0.0',
     'toml>=0.9.2',
     'pyyaml'
 ]
