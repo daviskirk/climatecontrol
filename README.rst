@@ -4,9 +4,9 @@
 CLIMATECONTROL
 ==============
 
-CLIMATECONTROL controls your apps configuration environment. It is a Python
-library for loading app configurations from files and/or namespaced environment
-variables.
+CLIMATECONTROL controls your applications settings and configuration
+environment. It is a Python library for loading app configurations from files
+and/or namespaced environment variables.
 
 
 Install
