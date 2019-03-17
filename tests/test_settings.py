@@ -288,6 +288,33 @@ def test_nested_settings_files(tmpdir):
     }
 
 
+def test_multiple_settings_files(tmpdir):
+    """Check that parsing multiple files on after another works as expected.
+
+    We assume a settings file list with multiple files and expect the files to
+    be parsed in that order, the latter file overwriting the settings of
+    earlier files.
+
+    """
+    subfolder = tmpdir.mkdir('sub')
+    p1 = subfolder.join('settings1.json')
+    p1.write(json.dumps({'foo': 'test1'}))
+
+    p2 = subfolder.join('settings2.json')
+    content = subfolder.join('content.txt')
+    content.write('test2')
+    p2.write(json.dumps({'foo_from_file': str(content)}))
+
+    settings_map = settings_parser.Settings(prefix='TEST_STUFF', settings_files=[str(p1), str(p2)])
+    assert dict(settings_map) == {'foo': 'test2'}
+
+    p3 = subfolder.join('settings3.json')
+    p3.write(json.dumps({'foo': 'test3'}))
+
+    settings_map = settings_parser.Settings(prefix='TEST_STUFF', settings_files=[str(p1), str(p2), str(p3)])
+    assert dict(settings_map) == {'foo': 'test3'}
+
+
 def mock_parser_fcn(s):
     """Return input instead of doing some complex parsing."""
     return s
