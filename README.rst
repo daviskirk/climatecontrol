@@ -1,8 +1,8 @@
 |Build Status| |Coverage Status| |PyPi Status| |PyPI license|
 
 
-CLIMATECONTROL
-==============
+.. image:: https://raw.githubusercontent.com/daviskirk/climatecontrol/logo/climatecontrol-text.svg?sanitize=true
+
 
 CLIMATECONTROL controls your applications settings and configuration
 environment. It is a Python library for loading app configurations from files
