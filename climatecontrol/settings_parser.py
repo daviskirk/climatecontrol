@@ -1,5 +1,6 @@
 """Settings parser."""
 
+import glob
 import json
 import logging
 import os
@@ -17,16 +18,15 @@ except ImportError:
 
 from .env_parser import EnvParser
 from .exceptions import SettingsValidationError  # noqa: F401  # Import here for backwards compatability.
-from .file_loaders import FileLoader, load_from_filepath, load_from_filepath_or_content
+from .file_loaders import (
+    FileLoader, Fragment, NoCompatibleLoaderFoundError, iter_load, load_from_filepath
+)
 from .logtools import DEFAULT_LOG_SETTINGS, logging_config
 from .utils import iter_hierarchy, update_nested
 
 
 logger = logging.getLogger(__name__)
 T = TypeVar('T')
-
-
-Fragment = NamedTuple('Fragment', [('data', Dict[str, Any]), ('source', str)])
 
 
 class Settings(Mapping):
@@ -246,7 +246,7 @@ class Settings(Mapping):
         self._settings_files = archived_settings_files
         self.update_data = archived_update_data
 
-    def _render_from_file_vars(self, data: T, postfix_trigger='_from_file') -> T:
+    def _render_from_file_vars(self, data: T, postfix_trigger: str = '_from_file') -> T:
         """Read and replace settings values from content local files.
 
         Args:
@@ -276,7 +276,12 @@ class Settings(Mapping):
                 filepath = v
                 # Reassign value (v) using the contents of the file.
                 try:
-                    v = load_from_filepath(filepath, allow_unknown_file_type=True)
+                    try:
+                        v = load_from_filepath(filepath)
+                    except NoCompatibleLoaderFoundError:
+                        # just load as plain text file and interpret as string
+                        with open(filepath) as f:
+                            v = f.read().strip()
                 except FileNotFoundError as e:
                     logger.info('Error while trying to load variable from file: %s. (%s) Skipping...',
                                 filepath, e)
@@ -292,9 +297,8 @@ class Settings(Mapping):
         return new_data
 
     def _iter_load_files(self) -> Iterator[Fragment]:
-        for settings_file in self.settings_files:
-            file_update = load_from_filepath_or_content(settings_file)
-            yield Fragment(data=file_update, source=str(settings_file))
+        for entry in self.settings_files:
+            yield from iter_load(entry)
 
     def _log_assignments(self, fragment: Fragment) -> None:
         messages = []

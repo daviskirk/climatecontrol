@@ -5,9 +5,8 @@ import logging
 import os
 from typing import Any, Dict, Iterator, Mapping, NamedTuple, Sequence, Set
 
-from .file_loaders import load_from_filepath_or_content
+from . import file_loaders
 from .utils import update_nested
-
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +56,7 @@ class EnvParser:
     """
 
     def __init__(self,
-                 prefix: str = 'APP_SETTINGS',
+                 prefix: str = 'CLIMATECONTROL',
                  split_char: str = '_',
                  implicit_depth: int = 0,
                  settings_file_suffix: str = 'SETTINGS_FILE',
@@ -201,7 +200,8 @@ class EnvParser:
         if include_file:
             settings_file = os.environ.get(self.settings_file_env_var)
             if settings_file:
-                yield EnvSetting(self.settings_file_env_var, load_from_filepath_or_content(settings_file))
+                for fragment in file_loaders.iter_load(settings_file):
+                    yield EnvSetting(self.settings_file_env_var, fragment.data)
         if include_vars:
             for env_var in os.environ:
                 nested_keys = list(self._iter_nested_keys(env_var))

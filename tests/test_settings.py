@@ -150,6 +150,16 @@ def test_settings_multiple_files(mock_empty_os_environ, mock_settings_files, tmp
     assert dict(settings_map) == mock_settings_files[1]
 
 
+def test_settings_multiple_files_with_glob(mock_empty_os_environ, mock_settings_files, tmpdir, file_extension):
+    """Check that setting multiple files as "settings_files" option works correctly."""
+    directory, _ = os.path.split(mock_settings_files[0][0])
+    glob_path = directory + os.path.sep + '*' + file_extension
+    settings_map = settings_parser.Settings(prefix='TEST_STUFF',
+                                            settings_files=glob_path)
+    assert isinstance(settings_map, Mapping)
+    assert dict(settings_map) == mock_settings_files[1]
+
+
 def test_settings_env_file_and_env(mock_env_settings_file, tmpdir):
     """Check that a settings file from an env variable works together with other env variables settings.
 
