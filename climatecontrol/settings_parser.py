@@ -57,8 +57,8 @@ class Settings(Mapping):
         >>> os.environ['MY_APP_SECTION1_SUB1'] = 'test1'
         >>> os.environ['MY_APP_SECTION2_SUB2'] = 'test2'
         >>> os.environ['MY_APP_SECTION2_SUB3'] = 'test3'
-        >>> settings_map = Settings(prefix='MY_APP', implicit_depth=1)
-        >>> dict(settings_map)
+        >>> settings_manager = SettingsManager(prefix='MY_APP', implicit_depth=1)
+        >>> settings_manager.settings
         {'value0': 'test0', 'section1': {'subsection1': 'test1'}, 'section2': {'sub2': 'test2', 'sub3': 'test3'}}
 
     See Also:
@@ -76,7 +76,7 @@ class Settings(Mapping):
         self.parser = parser
         self.settings_files = settings_files
         self.update_data = {}  # type: dict
-        self._data = {}  # type: Mapping
+        self._data = {}  # type: dict
 
         if update_on_init:
             self.update()
@@ -149,7 +149,7 @@ class Settings(Mapping):
             update_nested(update_data, d)
 
         def update_fragment(fragment: Fragment) -> None:
-            preprocessed = Fragment(self.preprocess_fragment(fragment.data), fragment.source)
+            preprocessed = self.preprocess_fragment(fragment)
             self._log_assignments(preprocessed)
             update_nested(settings_map, preprocessed.data)
 
@@ -198,9 +198,9 @@ class Settings(Mapping):
         from . import cli_utils
         return cli_utils.click_settings_file_option(self, **kw)
 
-    def preprocess_fragment(self, fragment: T) -> T:
+    def preprocess_fragment(self, fragment: Fragment) -> Fragment:
         """Preprocess a settings fragment and return the new version."""
-        return self._render_from_file_vars(fragment)
+        return Fragment(data=replace_from_file_vars(fragment.data), source=fragment.source)
 
     def to_config(self, *, save_to: str = None, style: str = '.json') -> Optional[str]:
         """Generate a settings file from the current settings."""
@@ -245,56 +245,6 @@ class Settings(Mapping):
         self._settings_files = archived_settings_files
         self.update_data = archived_update_data
 
-    def _render_from_file_vars(self, data: T, postfix_trigger: str = '_from_file') -> T:
-        """Read and replace settings values from content local files.
-
-        Args:
-            data: Given subset of settings data (or entire settings mapping)
-            postfix_trigger: Optionally configurable string to trigger a local
-                file value. If a key is found which ends with this string, the
-                value is assumed to be a file path and the settings value will
-                be set to the content of the file.
-
-        Returns:
-            An updated copy of `data` with keys and values replaced accordingly.
-
-        """
-        if not data:
-            return data
-        elif isinstance(data, Mapping):
-            new_data = {k: v for k, v in data.items()}  # type: Any
-            items = tuple(data.items())
-        elif isinstance(data, Sequence) and not isinstance(data, str):
-            new_data = [item for item in data]
-            items = tuple(enumerate(data))
-        else:
-            return cast(T, data)
-        for k, v in items:
-            if isinstance(v, str) and isinstance(k, str) and k.lower().endswith(postfix_trigger):
-                key_with_postfix = k
-                filepath = v
-                # Reassign value (v) using the contents of the file.
-                try:
-                    try:
-                        v = load_from_filepath(filepath)
-                    except NoCompatibleLoaderFoundError:
-                        # just load as plain text file and interpret as string
-                        with open(filepath) as f:
-                            v = f.read().strip()
-                except FileNotFoundError as e:
-                    logger.info('Error while trying to load variable from file: %s. (%s) Skipping...',
-                                filepath, e)
-                else:
-                    k = k[:-len(postfix_trigger)]  # Use the "actual" key from here on.
-                    new_data[k] = v
-                    logger.info('Settings key %s set to contents of file "%s"', k, filepath)
-                finally:
-                    del new_data[key_with_postfix]
-            if isinstance(v, (Mapping, Sequence)) and not isinstance(v, str):
-                parsed_v = self._render_from_file_vars(v)
-                new_data[k] = parsed_v
-        return new_data
-
     def _iter_load_files(self) -> Iterator[Fragment]:
         for entry in self.settings_files:
             yield from iter_load(entry)
@@ -309,3 +259,54 @@ class Settings(Mapping):
             logger.debug('Assigned settings%s: %s',
                          ' from ' + str(fragment.source) if fragment.source else '',
                          json.dumps(messages))
+
+
+def replace_from_file_vars(data: T, postfix_trigger: str = '_from_file') -> T:
+    """Read and replace settings values from content local files.
+
+    Args:
+        data: Given subset of settings data (or entire settings mapping)
+        postfix_trigger: Optionally configurable string to trigger a local
+            file value. If a key is found which ends with this string, the
+            value is assumed to be a file path and the settings value will
+            be set to the content of the file.
+
+    Returns:
+        An updated copy of `data` with keys and values replaced accordingly.
+
+    """
+    if not data:
+        return data
+    elif isinstance(data, Mapping):
+        new_data = {k: v for k, v in data.items()}  # type: Any
+        items = tuple(data.items())
+    elif isinstance(data, Sequence) and not isinstance(data, str):
+        new_data = [item for item in data]
+        items = tuple(enumerate(data))
+    else:
+        return cast(T, data)
+    for k, v in items:
+        if isinstance(v, str) and isinstance(k, str) and k.lower().endswith(postfix_trigger):
+            key_with_postfix = k
+            filepath = v
+            # Reassign value (v) using the contents of the file.
+            try:
+                try:
+                    v = load_from_filepath(filepath)
+                except NoCompatibleLoaderFoundError:
+                    # just load as plain text file and interpret as string
+                    with open(filepath) as f:
+                        v = f.read().strip()
+            except FileNotFoundError as e:
+                logger.info('Error while trying to load variable from file: %s. (%s) Skipping...',
+                            filepath, e)
+            else:
+                k = k[:-len(postfix_trigger)]  # Use the "actual" key from here on.
+                new_data[k] = v
+                logger.info('Settings key %s set to contents of file "%s"', k, filepath)
+            finally:
+                del new_data[key_with_postfix]
+        if isinstance(v, (Mapping, Sequence)) and not isinstance(v, str):
+            parsed_v = replace_from_file_vars(v)
+            new_data[k] = parsed_v
+    return new_data
