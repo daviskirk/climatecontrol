@@ -9,6 +9,7 @@ from typing import Tuple, Iterator, List  # noqa: F401
 from typing import Any, Dict, Mapping, NamedTuple
 
 from .exceptions import NoCompatibleLoaderFoundError
+from .fragment import Fragment
 
 try:
     import toml
@@ -18,9 +19,6 @@ try:
     import yaml
 except ImportError:
     yaml = None  # type: ignore
-
-
-Fragment = NamedTuple('Fragment', [('data', Dict[str, Any]), ('source', str)])
 
 
 def iter_load(path_or_content: str) -> Iterator[Fragment]:
@@ -49,11 +47,11 @@ def iter_load(path_or_content: str) -> Iterator[Fragment]:
     globbed_files = glob.glob(expanded_path_or_content)  # type: List[str]
     if globbed_files:
         for filepath in sorted(globbed_files):
-            yield Fragment(data=load_from_filepath(filepath), source=filepath)
+            yield Fragment(value=load_from_filepath(filepath), source=filepath)
         return
 
     # assume content if no files were found
-    yield Fragment(data=load_from_content(path_or_content), source='content')
+    yield Fragment(value=load_from_content(path_or_content), source='content')
 
 
 def load_from_content(content: str) -> Dict[str, Any]:

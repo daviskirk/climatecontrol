@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from copy import deepcopy
 from pprint import pformat
 from typing import List, Type, TypeVar, Tuple # noqa F401
-from typing import (cast, Any, Callable, Sequence,
+from typing import (cast, Any, Callable, List, Sequence,
                     Optional, Union, Mapping, Dict, Iterator)
 
 try:
@@ -18,10 +18,11 @@ except ImportError:
 from .env_parser import EnvParser
 from .exceptions import SettingsValidationError  # noqa: F401  # Import here for backwards compatability.
 from .file_loaders import (
-    FileLoader, Fragment, NoCompatibleLoaderFoundError, iter_load, load_from_filepath
+    FileLoader, NoCompatibleLoaderFoundError, iter_load, load_from_filepath
 )
+from .fragment import Fragment, FragmentKind
 from .logtools import DEFAULT_LOG_SETTINGS, logging_config
-from .utils import iter_hierarchy, update_nested
+from .utils import iter_hierarchy, merge_nested
 
 
 logger = logging.getLogger(__name__)
@@ -76,6 +77,7 @@ class Settings(Mapping):
         self.parser = parser
         self.settings_files = settings_files
         self.update_data = {}  # type: dict
+        self.fragments = []  # type: List[Fragment]
         self._data = {}  # type: dict
 
         if update_on_init:
@@ -140,29 +142,45 @@ class Settings(Mapping):
             {'section': {'value': 'test', 'new_value': 'new'}, 'section2': {'new_env_value': 'new_env_data'}}
 
         """
-        settings_map = {}  # type: dict
-
         # External data is any data that was explicitely assigned through a
         # call to :meth:`update`.
-        update_data = {} if clear else deepcopy(self.update_data)
+        update_data = {} if clear else self.update_data
         if d:
-            update_nested(update_data, d)
+            update_data = merge_nested(update_data, d)
 
-        def update_fragment(fragment: Fragment) -> None:
-            preprocessed = self.preprocess_fragment(fragment)
-            self._log_assignments(preprocessed)
-            update_nested(settings_map, preprocessed.data)
+        # Compile a list of fragments
+        fragments = []
 
-        # Update settings
         for fragment in self._iter_load_files():
-            update_fragment(fragment)
-        update_fragment(Fragment(self.env_parser.parse(), 'environment variables'))
-        update_fragment(Fragment(update_data, 'external'))
+            for processed_fragment in self.process_fragment(fragments):
+                fragments.append(processed_fragment)
+
+        for fragment in self.env_parser.iter_load():
+            fragments.append(Fragment)
+
+        fragments.append(Fragment(value=update_data, source='external'))
+
+        # Combine the fragments into one final fragment
+        combined_fragment = None  # type: Optional[Fragment]
+        fragment_iterator = iter(fragments)
+        for fragment in fragment_iterator:
+            if combined_fragment is None:
+                if fragment.kind == FragmentKind.MERGE:
+                    combined_fragment = fragment
+                continue
+            combined_fragment = combined_fragment.apply(fragment)
+
+        # Obtain settings map
+        if combined_fragment is None:
+            settings_map = {}  # type: dict
+        else:
+            settings_map = fragment.expand_value_with_path()
 
         self._data = self.parse(settings_map)
 
-        # If parsing was successfull, update external data
+        # If parsing was successfull, update external data and fragments.
         self.update_data = update_data
+        self.fragments = fragments
 
     def parse(self, data: Mapping) -> Mapping:
         """Parse data into settings.
@@ -187,10 +205,10 @@ class Settings(Mapping):
         ``climatecontrol`` package.
 
         """
-        logging_settings = deepcopy(DEFAULT_LOG_SETTINGS)
-        logging_settings_update = self.get(logging_section, {})
+        logging_settings = DEFAULT_LOG_SETTINGS
+        logging_settings_update = self.get(logging_section)
         if logging_settings_update:
-            update_nested(logging_settings, logging_settings_update)
+            logging_settings = merge_nested(logging_settings, logging_settings_update)
         logging_config.dictConfig(logging_settings)
 
     def click_settings_file_option(self, **kw) -> Callable:
@@ -198,9 +216,10 @@ class Settings(Mapping):
         from . import cli_utils
         return cli_utils.click_settings_file_option(self, **kw)
 
-    def preprocess_fragment(self, fragment: Fragment) -> Fragment:
+    def process_fragment(self, fragment: Fragment) -> Fragment:
         """Preprocess a settings fragment and return the new version."""
-        return Fragment(data=replace_from_file_vars(fragment.data), source=fragment.source)
+
+        return Fragment(value=replace_from_file_vars(fragment.data), source=fragment.source)
 
     def to_config(self, *, save_to: str = None, style: str = '.json') -> Optional[str]:
         """Generate a settings file from the current settings."""
@@ -261,7 +280,7 @@ class Settings(Mapping):
                          json.dumps(messages))
 
 
-def replace_from_file_vars(data: T, postfix_trigger: str = '_from_file') -> T:
+def replace_from_file_vars(fragment: Fragment, postfix_trigger: str = '_from_file') -> Fragment:
     """Read and replace settings values from content local files.
 
     Args:
@@ -275,9 +294,10 @@ def replace_from_file_vars(data: T, postfix_trigger: str = '_from_file') -> T:
         An updated copy of `data` with keys and values replaced accordingly.
 
     """
-    if not data:
-        return data
-    elif isinstance(data, Mapping):
+    if not fragment.value:
+        yield fragment
+        return
+    elif isinstance(fragment.value, Mapping):
         new_data = {k: v for k, v in data.items()}  # type: Any
         items = tuple(data.items())
     elif isinstance(data, Sequence) and not isinstance(data, str):

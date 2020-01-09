@@ -42,8 +42,9 @@ def test_parse_environment_vars(mock_os_environ, prefix, implicit_depth, split_c
         prefix=prefix,
         split_char=split_char,
         implicit_depth=implicit_depth)
-    result = env_parser.parse()
-    assert result == expected
+    results = [f.expand_value_with_path() for f in env_parser.iter_load()]
+    import pdb; pdb.set_trace()  # noqa: E702
+    assert results == expected
 
 
 @pytest.mark.parametrize('implicit_depth, environ, expected', [

@@ -1,18 +1,51 @@
 """Utility functions."""
 
+from copy import deepcopy
 from typing import Type  # noqa: F401
-from typing import Dict, Iterator, Mapping, Sequence, Union
+from typing import Any, Dict, Iterator, Mapping, Sequence, Union
+from itertools import zip_longest
 
 
-def update_nested(d: Dict, u: Mapping) -> Dict:
-    """Update nested mapping ``d`` with nested mapping ``u``."""
-    for k, v in u.items():
-        if isinstance(v, Mapping):
-            r = update_nested(d.get(k, {}), v)
-            d[k] = r
-        else:
-            d[k] = u[k]
-    return d
+class _Empty:
+    """Object representing an empty item."""
+
+    def __repr__(self):
+        return '<EMPTY>'
+
+    def __bool__(self):
+        return False
+
+
+EMPTY = _Empty()
+
+
+def get_nested(obj: Union[Mapping, Sequence], path: Sequence[str]) -> Any:
+    """Get element of a sequence or map based on multiple nested keys."""
+    result = obj
+    for subpath in path:
+        result = result[subpath]
+    return result
+
+
+def merge_nested(d: Any, u: Any, _update: bool = False) -> Any:
+    """Merge nested mapping ``d`` with nested mapping ``u``."""
+    if isinstance(d, Mapping):
+        new_dict: dict = dict(**d)
+        if not isinstance(u, Mapping):
+            return deepcopy(u)
+        for k, u_v in u.items():
+            new_dict[k] = merge_nested(d.get(k), u_v)
+        return new_dict
+    elif isinstance(d, Sequence) and not isinstance(d, str):
+        if not isinstance(u, Sequence) or isinstance(u, str):
+            return deepcopy(u)
+        new_list = [
+            merge_nested(d_item, u_item) if u_item is not EMPTY else d_item
+            for d_item, u_item
+            in zip(*zip_longest(d, u, fillvalue=EMPTY))
+        ]
+        return new_list
+    return deepcopy(u)
 
 
 def iter_hierarchy(data: Union[Mapping, Sequence], levels: Sequence[str] = ()) -> Iterator[Sequence[str]]:

@@ -6,11 +6,12 @@ import os
 from typing import Any, Dict, Iterator, Mapping, NamedTuple, Sequence, Set
 
 from . import file_loaders
-from .utils import update_nested
+from .fragment import Fragment
+from .utils import merge_nested
 
 logger = logging.getLogger(__name__)
 
-EnvSetting = NamedTuple('EnvSetting', [('name', str), ('value', Mapping[str, Any])])
+EnvSetting = NamedTuple('EnvSetting', [('name', str), ('value', Fragment)])
 
 
 class EnvParser:
@@ -114,7 +115,7 @@ class EnvParser:
             raise ValueError('``split_char`` must be a single character')
         self._split_char = str(char)
 
-    def parse(self, include_vars=True, include_file: bool = True) -> Dict[str, Any]:
+    def iter_load(self, include_vars=True, include_file: bool = True) -> Iterator[Fragment]:
         """Convert environment variables to nested dict.
 
         Note that all string inputs are case insensitive and all resulting keys
@@ -141,30 +142,24 @@ class EnvParser:
             {'testgroup': {'testvar': 27}}
 
         """
-        settings_map = {}  # type: dict
-        for env_var, settings in self._iter_parse(include_vars=include_vars, include_file=include_file):
-            logger.info('Parsed setting from env var: %s.', env_var)
-            update_nested(settings_map, settings)
-        return settings_map
+        if include_file:
+            settings_file_str = os.getenv(self.settings_file_env_var, '')
+            settings_files = [s.strip() for s in settings_file_str.split(',')]
+            for settings_file in settings_files:
+                for fragment in file_loaders.iter_load(settings_file):
+                    fragment.source = 'ENV:' + str(self.settings_file_env_var) + ':' + fragment.source
+                    yield fragment
+        if include_vars:
+            for env_var, env_var_value in os.environ.items():
+                nested_keys = list(self._iter_nested_keys(env_var))
+                if not nested_keys:
+                    continue
+                value = self._parse_env_var_value(env_var_value)
+                fragment = Fragment(value=value, path=nested_keys, source='ENV:' + env_var)
+                yield fragment
 
     def _build_env_var(self, *parts: str) -> str:
         return self.split_char.join(self._strip_split_char(p).upper() for p in parts)
-
-    def _build_settings_update(self, keys: Sequence[str], value: Any) -> dict:
-        """Build a settings update dictionary.
-
-        Args:
-            keys: Sequence of keys, each key representing a level in a nested dictionary
-            value: Value that is assigned to the key at the deepest level.
-
-        """
-        update = {}  # type: dict
-        u = update
-        for key in keys[:-1]:
-            u[key] = {}
-            u = u[key]
-        u[keys[-1]] = value
-        return update
 
     def _iter_nested_keys(self, env_var: str) -> Iterator[str]:
         """Iterate over nested keys of an environment variable name.
@@ -186,32 +181,6 @@ class EnvParser:
             elif section:
                 yield section
 
-    def _iter_parse(self, include_vars: bool = True, include_file: bool = True) -> Iterator[EnvSetting]:
-        """Use in ``parse``.
-
-        Iterate over valid environment variables and files defined by
-        environment variables and yieldan envirnment settings tuple for each
-        valid entry.
-
-        See also:
-            :meth:`parse`
-
-        """
-        if include_file:
-            settings_file = os.environ.get(self.settings_file_env_var)
-            if settings_file:
-                for fragment in file_loaders.iter_load(settings_file):
-                    yield EnvSetting(self.settings_file_env_var, fragment.data)
-        if include_vars:
-            for env_var in os.environ:
-                nested_keys = list(self._iter_nested_keys(env_var))
-                if not nested_keys:
-                    continue
-                value = self._get_env_var_value(env_var)
-                update = self._build_settings_update(nested_keys, value)
-                if update:
-                    yield EnvSetting(env_var, update)
-
     def _strip_split_char(self, s):
         if s.startswith(self.split_char):
             s = s[len(self.split_char):]
@@ -220,9 +189,8 @@ class EnvParser:
         return s
 
     @staticmethod
-    def _get_env_var_value(env_var: str) -> Any:
-        """Parse an environment variable value using the toml parser."""
-        v = os.environ[env_var]
+    def _parse_env_var_value(v: str) -> Any:
+        """Parse an environment variable value parsing as json."""
         if isinstance(v, str):
             try:
                 return json.loads(v)
