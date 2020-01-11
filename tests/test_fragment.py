@@ -1,8 +1,9 @@
 """Tests for fragments."""
 
 import pytest
+import sys
 
-from climatecontrol.fragment import Fragment, FragmentPath, EMPTY, FragmentKind
+from climatecontrol.fragment import Fragment, FragmentPath, EMPTY, merge_nested
 
 
 def test_fragment_path():
@@ -16,20 +17,30 @@ def test_fragment_path():
     assert FragmentPath(['a', 'stuff', 1])[1] == 'stuff', 'unexpected indexing'
 
 
-def test_fragment_path_expand():
-    """Test expansion of fragment path."""
-    assert FragmentPath(['a']).expand('test') == {'a': 'test'}
-    assert (
-        FragmentPath(['a', 'stuff', 1, 'bla']).expand() ==
+@pytest.mark.parametrize('path, expected', [
+    (
+        ['a'],
+        {'a': 'test'}
+    ),
+    (
+        ['a', 'stuff', 1, 'bla'],
         {
             'a': {
                 'stuff': [
                     EMPTY,
-                    {'bla': EMPTY}
+                    {'bla': 'test'}
                 ]
             }
         }
+    ),
+    (
+        [2, 'a'],
+        [EMPTY, EMPTY, {'a': 'test'}]
     )
+])
+def test_fragment_path_expand(path, expected):
+    """Test expansion of fragment path."""
+    assert FragmentPath(path).expand('test') == expected
 
 
 @pytest.mark.parametrize('a,b,expected', [
@@ -47,24 +58,23 @@ def test_fragment_path_common(a, b, expected):
 
 def test_fragment():
     """Test fragment constructor and representation."""
-    fragment = Fragment(value='bla', source='test', path=['a', 'b'], kind=FragmentKind.REMOVE)
+    fragment = Fragment(value='bla', source='test', path=['a', 'b'])
     assert fragment
     assert str(fragment) == \
-        "Fragment(value='bla', source='test', path=FragmentPath(['a', 'b']), kind=<FragmentKind.REMOVE: 'REMOVE'>)", \
+        "Fragment(value='bla', source='test', path=FragmentPath(['a', 'b']))", \
         'unexpected string representation'
 
 
 def test_fragment_equality():
     """Test fragment equality."""
     assert (
-        Fragment(value='bla', source='test', path=['a', 'b'], kind=FragmentKind.REMOVE) ==
-        Fragment(value='bla', source='test', path=['a', 'b'], kind=FragmentKind.REMOVE)
+        Fragment(value='bla', source='test', path=['a', 'b']) ==
+        Fragment(value='bla', source='test', path=['a', 'b'])
     )
     assert Fragment(value='bla') == Fragment(value='bla')
     assert Fragment(value='bla') != Fragment(value='blub')
     assert Fragment(value='bla', source='a') != Fragment(value='bla', source='b')
     assert Fragment(value='bla', path=['a']) != Fragment(value='bla', path=['b'])
-    assert Fragment(value='bla', kind=FragmentKind.MERGE) != Fragment(value='bla', kind=FragmentKind.REMOVE)
 
 
 def test_fragment_clone():
@@ -103,7 +113,12 @@ def test_fragment_iter_leaves():
         Fragment(value='test2', path=['c', 'd', 1, 'f'])
     ]
 
-    assert actual == expected
+    if sys.version_info[:2] >= (3, 6):
+        assert actual == expected
+    else:
+        def to_set(fragment_list):
+            return set((item.value, tuple(item.path)) for item in fragment_list)
+        assert to_set(actual) == to_set(expected)
 
 
 def test_expand_value_with_path():
@@ -113,35 +128,53 @@ def test_expand_value_with_path():
     assert actual == expected
 
 
+@pytest.mark.parametrize('a, b, expected', [
+    pytest.param({'a': 5}, {'b': 6}, {'a': 5, 'b': 6},
+                 id='simple dict update'),
+    pytest.param({'a': 5}, {'b': 6, 'a': 4}, {'a': 4, 'b': 6},
+                 id='simple dict update with overwrite'),
+    pytest.param({'a': {'b': 1, 'c': 2}}, {'d': 3, 'a': {'b': 'new'}}, {'a': {'b': 'new', 'c': 2}, 'd': 3},
+                 id='nested dict update'),
+    pytest.param([1, 2, 3], [1, 4], [1, 4, 3],
+                 id='list update'),
+    pytest.param({'a': [1, {'b': 2}, 3]}, {'a': [EMPTY, 2]}, {'a': [1, 2, 3]},
+                 id='nested dict list update'),
+    pytest.param({'a': [1, {'b': 2}, 3]}, {'a': [EMPTY, {'c': 4}]}, {'a': [1, {'b': 2, 'c': 4}, 3]},
+                 id='nested dict list update'),
+    pytest.param(1, 2, 2,
+                 id='simple object overwrite'),
+    pytest.param([1], 2, 2,
+                 id='simple object overwrite'),
+])
+def test_merge_nested(a, b, expected):
+    """Testing nested merge."""
+    assert merge_nested(a, b) == expected
+
+
 @pytest.mark.parametrize('a_kw, b_kw, expected_kw', [
     (
         {'value': 4, 'path': ['a']},
         {'value': {'a': 5}},
-        {'value': 5, 'path': ['a']}
+        {'value': {'a': 5}}
     ),
     (
         {'value': {'a': 4, 'b': ['c', 'd', 'e']}, 'path': ['root']},
-        {'value': {'bla': 2}, 'path': ['root', 'a', 'b', 1]},
+        {'value': {'bla': 2}, 'path': ['root', 'b', 1]},
         {'value': {'a': 4, 'b': ['c', {'bla': 2}, 'e']}, 'path': ['root']}
     ),
     (
         {'value': {'a': 4, 'b': {'c': 'd'}}, 'path': ['root']},
-        {'value': {'b': 2}, 'path': ['root', 'a']},
+        {'value': {'b': 2}, 'path': ['root']},
         {'value': {'a': 4, 'b': 2}, 'path': ['root']}
     ),
     (
         {'value': 3},
         {'value': 5},
         {'value': 5}
-    ),
-    (
-        {'value': {'a': {'b': {'this': 'that'}, 'c': 'test'}, 'bla': 4}},
-        {'value': {'b': 5}, 'kind': FragmentKind.REMOVE, 'path': ['a']},
-        {'value': {'a': {'c': 'test'}, 'bla': 4}},
     )
 ])
-def test_fragment_apply(a_kw, b_kw, expected_kw):
+def test_fragment_merge(a_kw, b_kw, expected_kw):
     """Test the apply method of the fragment class."""
-    actual = Fragment(**a_kw).apply(Fragment(value=b_kw))
+    actual = Fragment(**a_kw).merge(Fragment(**b_kw))
     expected = Fragment(**expected_kw)
     assert actual == expected

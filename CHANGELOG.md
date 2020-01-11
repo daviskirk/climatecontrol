@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+### Added
+
+- Allow "_from_env" postfix in variables and load settings from the specified
+  environment variable (similar to "from_file").
+- Add "update_log" property which specifies a log of all variables loaded or
+  removed/replaced.
+- Allow overwriting / merging lists
+
+### Changed
+
+- Use fragments as base data structure for building settings map
+- Add python 3.7 and 3.8 to CI and update development environment config to 3.8
+
+
 ## [0.7.3] - 2019-01-17
 
 ### Fixed

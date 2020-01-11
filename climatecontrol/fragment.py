@@ -1,26 +1,17 @@
 """Module for defining settings fragments."""
 
-from copy import deepcopy
-from enum import Enum
 from itertools import zip_longest
-from typing import Any, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Iterable, Iterator, Mapping, Sequence, Union  # noqa: F401
 
 from .utils import EMPTY, get_nested, merge_nested
-
-
-class FragmentKind(Enum):
-    """Fragment kind."""
-
-    MERGE = 'MERGE'
-    REMOVE = 'REMOVE'
 
 
 class FragmentPath(Sequence):
     """Path indicating nested levels of a fragment value."""
 
-    def __init__(self, iterable: Iterable = ()):
+    def __init__(self, iterable: Iterable = ()) -> None:
         """Assign initial iterable data."""
-        self._data: list = list(iterable)
+        self._data = list(iterable)  # type: list
 
     def __len__(self) -> int:
         return len(self._data)
@@ -34,23 +25,24 @@ class FragmentPath(Sequence):
     def __repr__(self) -> str:
         return '{}({})'.format(type(self).__qualname__, repr(self._data))
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         return type(self) == type(other) and self._data == other._data
 
-    def expand(self, value=EMPTY):
+    def expand(self, value: Any = None) -> Any:
         """Expand path to object.
 
         Depending on each entry of the path a dictionary or list is created.
         Entries that are not defined are will with the :data:`EMPTY` object.
 
         Example:
-
             >>> FragmentPath(['a', 1, 'b']).expand()
-            {'a': [<EMPTY>, {'b': <EMPTY>}]}
+            {'a': [<EMPTY>, {'b': None}]}
 
         """
+        if not self._data:
+            return value
         if self._data and self._is_list_index(self._data[0]):
-            new_value = [EMPTY] * (self._data[0] + 1)
+            new_value = [EMPTY] * (self._data[0] + 1)  # type: Union[dict, list]
         else:
             new_value = {}
         sub_value = new_value
@@ -68,9 +60,9 @@ class FragmentPath(Sequence):
         return new_value
 
     def common(self, other: Sequence) -> 'FragmentPath':
-        """Given another sequence representing a path, return the part of the sequence up to the point where they first differ."""
-        common_path: List = []
-        other_path: FragmentPath = type(self)(other)
+        """Given a second path, return the part of the sequence up to the point where they first differ."""
+        common_path = []
+        other_path = type(self)(other)  # type: FragmentPath
         for subpath, subpath_other in zip(self._data, other_path):
             if subpath == subpath_other:
                 common_path.append(subpath)
@@ -86,38 +78,20 @@ class FragmentPath(Sequence):
 class Fragment:
     """Data fragment for storing a value and metadata related to it."""
 
-    value: Any
-    source: str
-    path: FragmentPath
-    kind: FragmentKind
-
     def __init__(self, value: Any,
-                 source: str = None,
-                 path: Iterable = None,
-                 kind: FragmentKind = None) -> None:
+                 source: str = '',
+                 path: Sequence = ()) -> None:
         """Initialize fragment."""
-        if isinstance(value, Fragment):
-            fragment = value
-            value = fragment.value
-            source = fragment.source
-            path = fragment.path
-            kind = fragment.kind
-
-        if isinstance(path, str):
-            path = path.split('.')
-
         self.value = value
-        self.source = source if source is not None else ''
-        self.path = FragmentPath(path) if path is not None else FragmentPath()
-        self.kind = kind if kind is not None else FragmentKind.MERGE
+        self.source = source
+        self.path = FragmentPath(path)
 
     def __repr__(self):
-        return '{}(value={}, source={}, path={}, kind={})'.format(
+        return '{}(value={}, source={}, path={})'.format(
             type(self).__qualname__,
             repr(self.value),
             repr(self.source),
             repr(self.path),
-            repr(self.kind)
         )
 
     def __eq__(self, other):
@@ -125,8 +99,7 @@ class Fragment:
             type(self) == type(other) and
             self.value == other.value and
             self.source == other.source and
-            self.path == other.path and
-            self.kind == other.kind
+            self.path == other.path
         )
 
     def iter_leaves(self) -> Iterator['Fragment']:
@@ -136,9 +109,8 @@ class Fragment:
         non-dictionary value is found.
 
         """
-        items: Iterable[tuple]
         if isinstance(self.value, Mapping):
-            items = self.value.items()
+            items = self.value.items()  # type: Iterable[tuple]
         elif isinstance(self.value, Sequence) and not isinstance(self.value, str):
             items = enumerate(self.value)
         else:
@@ -165,35 +137,12 @@ class Fragment:
 
         return self.clone(value=new_value, source=new_source, path=new_path)
 
-    def difference(self, fragment: 'Fragment') -> 'Fragment':
-        """Delete a fragments elements from the current fragment."""
-        expanded_value = deepcopy(self.expand_value_with_path())
-
-        for leaf in fragment.iter_leaves():
-            if leaf.path:
-                submap = get_nested(expanded_value, leaf.path[:-1])
-                del submap[leaf.path[-1]]
-
-        new_value = get_nested(expanded_value, self.path)
-
-        return self.clone(value=new_value)
-
-    def apply(self, fragment: 'Fragment'):
-        """Apply a second fragment according to it's "kind"."""
-        if fragment.kind == FragmentKind.MERGE:
-            return self.merge(fragment)
-        elif fragment.kind == FragmentKind.REMOVE:
-            return self.difference(fragment)
-        else:
-            raise ValueError('Can\'t apply fragment with kind: {}'.format(fragment.kind))
-
     def clone(self, **kwargs):
         """Clone fragment but using ``kwargs`` as alternative constructor arguments."""
         defaults = {
             'value': self.value,
             'source': self.source,
             'path': self.path,
-            'kind': self.kind,
         }
         updated_kwargs = {**defaults, **kwargs}
         return type(self)(**updated_kwargs)

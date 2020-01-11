@@ -1,11 +1,10 @@
 """Test settings."""
 
 import json
-import logging
 import os
+import sys
 from collections.abc import Mapping
 from unittest.mock import MagicMock
-import sys
 
 import click
 from click.testing import CliRunner
@@ -14,6 +13,7 @@ import toml
 
 from climatecontrol import settings_parser, cli_utils  # noqa: E402
 from climatecontrol.exceptions import NoCompatibleLoaderFoundError
+from climatecontrol.fragment import Fragment
 
 
 def test_settings_empty(mock_empty_os_environ):
@@ -35,10 +35,7 @@ def test_settings(mock_os_environ, update_on_init):
         kwargs['update_on_init'] = update_on_init
     settings_map = settings_parser.Settings(**kwargs)
     assert isinstance(settings_map, Mapping)
-    if update_on_init is False:
-        expected = {}
-    else:
-        expected = {'testgroup': {'testvar': 7, 'test_var': 6}, 'testgroup_test_var': 9}
+    expected = {'testgroup': {'testvar': 7, 'test_var': 6}, 'testgroup_test_var': 9}
     assert dict(settings_map) == expected
 
 
@@ -48,9 +45,10 @@ def test_settings_parse(mock_os_environ):
     parser = MagicMock()
     parser.return_value = expected
     settings_map = settings_parser.Settings(prefix='TEST_STUFF', parser=parser)
-    assert parser.call_count == 1
+    assert parser.call_count == 0, 'Before accessing settings, the parser should not have been called'
     assert isinstance(settings_map, Mapping)
     assert dict(settings_map) == expected
+    assert parser.call_count == 1, 'After accessing settings, the parser should have been called'
 
 
 @pytest.mark.parametrize('original', [False, True])
@@ -62,7 +60,7 @@ def test_parse_from_file_vars(original, file_exists, mock_os_environ, tmpdir):
     the file and not directly.
 
     """
-    settings_map = settings_parser.Settings(update_on_init=False)
+    settings_map = settings_parser.Settings()
     filepath = tmpdir.join('testvarfile')
     filename = str(filepath)
     if file_exists:
@@ -82,34 +80,59 @@ def test_parse_from_file_vars(original, file_exists, mock_os_environ, tmpdir):
     assert actual == expected
 
 
+@pytest.mark.parametrize('settings_update, var_content, expected', [
+    (
+        {'test_var_from_env': 'MY_VAR'},
+        'apassword',
+        {'test_var': 'apassword'}
+    ),
+    (
+        {'a': {'test_var_from_env': 'MY_VAR'}},
+        '{"b": "apassword"}',
+        {'a': {'test_var': {'b': 'apassword'}}}
+    ),
+    (
+        {'a': [0, {'test_var_from_env': 'MY_VAR', 'test_var2_from_env': 'MY_VAR'}]},
+        '1',
+        {'a': [0, {'test_var': 1, 'test_var2': 1}]}
+    ),
+    (
+        {'test_var_from_env': 'MY_WRONG_VAR', 'b': 3},
+        'never seen',
+        {'b': 3}
+    ),
+])
+def test_parse_from_env_vars(mock_os_environ, settings_update, var_content, expected):
+    """Test replacing environment variables in settings."""
+    settings_map = settings_parser.Settings(update_on_init=False)
+    os.environ['MY_VAR'] = var_content
+    settings_map.update(settings_update)
+    actual = dict(settings_map)
+    assert actual == expected
+
+
 @pytest.mark.parametrize('settings_files', ['asd;kjhaflkjhasf', '.', '/home/', ['.', 'asd;kjhaflkjhasf']])
 def test_settings_files_fail(mock_empty_os_environ, settings_files):
     """Check that passing invalid settings files really results in errors."""
+    settings_map = settings_parser.Settings(prefix='TEST_STUFF', settings_files=settings_files)
     with pytest.raises(NoCompatibleLoaderFoundError):
-        settings_parser.Settings(prefix='TEST_STUFF',
-                                 settings_files='asdlijasdlkjaa')
+        settings_map.update()
 
 
-def test_yaml_import_fail(mock_empty_os_environ, monkeypatch):
-    """Check that uninstalled yaml really results in an error."""
-    file_str = '---\na: 5'
+@pytest.mark.parametrize('file_str, mock_module', [
+    ('---\na: 5', 'climatecontrol.file_loaders.yaml'),
+    ('[section]\na = 5', 'climatecontrol.file_loaders.toml')
+])
+def test_file_loader_module_import_fail(mock_empty_os_environ, monkeypatch, file_str, mock_module):
+    """Check that uninstalled yaml or toml really results in an error."""
     # Check that without mocking everything is file:
-    settings_parser.Settings(prefix='TEST_STUFF', settings_files=file_str)
+    settings_map = settings_parser.Settings(prefix='TEST_STUFF', settings_files=[file_str])
+    settings_map.update()
     # Now fake not having imported yaml
-    monkeypatch.setattr('climatecontrol.file_loaders.yaml', None)
+    monkeypatch.setattr(mock_module, None)
+    settings_map = settings_parser.Settings(prefix='TEST_STUFF', settings_files=[file_str])
     with pytest.raises(ImportError):
-        settings_parser.Settings(prefix='TEST_STUFF', settings_files='---\na: 5')
-
-
-def test_toml_import_fail(mock_empty_os_environ, monkeypatch):
-    """Check that uninstalled toml really results in an error."""
-    file_str = '[section]\na = 5'
-    # Check that without mocking everything is file:
-    settings_parser.Settings(prefix='TEST_STUFF', settings_files=file_str)
-    # Now fake not having imported yaml
-    monkeypatch.setattr('climatecontrol.file_loaders.toml', None)
-    with pytest.raises(ImportError):
-        settings_parser.Settings(prefix='TEST_STUFF', settings_files=file_str)
+        settings_map.update()
 
 
 @pytest.mark.parametrize('settings_file_content', [
@@ -130,8 +153,9 @@ def test_settings_file_content(mock_empty_os_environ, settings_file_content):
 ])
 def test_settings_file_content_fail(mock_empty_os_environ, settings_file_content, error):
     """Check parsing file content from different file types raises an error on incorrect file content."""
+    settings_map = settings_parser.Settings(prefix='TEST_STUFF', settings_files=settings_file_content)
     with pytest.raises(error):
-        settings_parser.Settings(prefix='TEST_STUFF', settings_files=settings_file_content)
+        settings_map.update()
 
 
 def test_settings_single_file(mock_empty_os_environ, mock_settings_file, tmpdir):
@@ -178,7 +202,7 @@ def test_settings_env_file_and_env(mock_env_settings_file, tmpdir):
     }
 
 
-def test_settings_multiple_files_and_env(mock_os_environ, mock_settings_files, tmpdir, caplog):
+def test_settings_multiple_files_and_env(mock_os_environ, mock_settings_files, tmpdir):
     """Check that using multiple settings files together with settings parsed from env variables works.
 
     Each subsequent settings file should override the last and environment vars
@@ -188,7 +212,6 @@ def test_settings_multiple_files_and_env(mock_os_environ, mock_settings_files, t
     result.
 
     """
-    caplog.set_level(logging.DEBUG)
     settings_map = settings_parser.Settings(
         prefix='TEST_STUFF',
         settings_files=mock_settings_files[0])
@@ -206,38 +229,46 @@ def test_settings_multiple_files_and_env(mock_os_environ, mock_settings_files, t
         'testgroup_test_var': 9
     }
 
-    # Check that the logs are correctly printed.
-    record_tuples = caplog.record_tuples
-    secret_file_path_str = str(tmpdir / 'sub2' / 'secret.txt')
-    expected = [
-        ('climatecontrol.settings_parser', 20, 'Settings key testvar_inline_1 set to contents of file "{}"'.format(secret_file_path_str)),  # noqa: 501
-        ('climatecontrol.settings_parser', 20, 'Settings key testvar_inline_2 set to contents of file "{}"'.format(secret_file_path_str)),  # noqa: 501
-        ('climatecontrol.settings_parser', 10, 'Assigned settings from {}: ["testgroup.testvar", "testgroup.testvar_inline_1", "othergroup.blabla", "othergroup.testvar_inline_2"]'.format(mock_settings_files[0][0])),  # noqa: 501
-        ('climatecontrol.settings_parser', 10, 'Assigned settings from {}: ["othergroup.blabla", "othergroup.testvar_inline_2"]'.format(mock_settings_files[0][1])),  # noqa: 501
-        ('climatecontrol.env_parser', 20, 'Parsed setting from env var: TEST_STUFF_TESTGROUP__TEST_VAR.'),
-        ('climatecontrol.env_parser', 20, 'Parsed setting from env var: TEST_STUFF_TESTGROUP__TESTVAR.'),
-        ('climatecontrol.env_parser', 20, 'Parsed setting from env var: TEST_STUFF_TESTGROUP_TEST_VAR.'),
-        ('climatecontrol.settings_parser', 10, 'Assigned settings from environment variables: ["testgroup.test_var", "testgroup.testvar", "testgroup_test_var"]')  # noqa: 501
+    expected_fragments = [
+        Fragment(
+            value={
+                'testgroup': {'testvar': 123, 'testvar_inline_1_from_file': str(tmpdir / 'sub2' / 'secret.txt')},
+                'othergroup': {'blabla': 55, 'testvar_inline_2_from_file': str(tmpdir / 'sub2' / 'secret.txt')}
+            },
+            source=mock_settings_files[0][0], path=[]
+        ),
+        Fragment(value=settings_parser.REMOVED, source=mock_settings_files[0][0],
+                 path=['testgroup', 'testvar_inline_1_from_file']),
+        Fragment(value='foo', source=mock_settings_files[0][0],
+                 path=['testgroup', 'testvar_inline_1']),
+        Fragment(value=settings_parser.REMOVED, source=mock_settings_files[0][0],
+                 path=['othergroup', 'testvar_inline_2_from_file']),
+        Fragment(value='foo', source=mock_settings_files[0][0],
+                 path=['othergroup', 'testvar_inline_2']),
+        Fragment(value={'othergroup': {'blabla': 555, 'testvar_inline_2': 'bar'}},
+                 source=mock_settings_files[0][1]),
+        Fragment(value=6, source='ENV:TEST_STUFF_TESTGROUP__TEST_VAR',
+                 path=['testgroup', 'test_var']),
+        Fragment(value=7, source='ENV:TEST_STUFF_TESTGROUP__TESTVAR',
+                 path=['testgroup', 'testvar']),
+        Fragment(value=9, source='ENV:TEST_STUFF_TESTGROUP_TEST_VAR',
+                 path=['testgroup_test_var']),
+        Fragment(value={}, source='external')
     ]
-    assert len(record_tuples) == len(expected)
+
+    assert len(settings_map.fragments) == len(expected_fragments)
     if sys.version_info[:2] >= (3, 6):
-        assert record_tuples == expected
-    else:
-        # for python < 3.6 dictionaries are not ordered. For this reason it is
-        # very hard to figure out in what order the hierarchies actually come
-        # out.
-        unambiguous_indices = [0, 1, 4, 5, 6]
-        set(record_tuples[i] for i in unambiguous_indices) == set(expected[i] for i in unambiguous_indices)
-        for i in [2, 3, 7]:
-            assert 'Assigned settings from' in record_tuples[2][2]
-        assert '"testgroup.testvar"' in record_tuples[2][2]
-        assert str(mock_settings_files[0][0]) in record_tuples[2][2]
+        # in python < 3.6 dicts are not ordered so we can't be sure what's up here in python 3.5
+        assert settings_map.fragments == expected_fragments
 
 
-@pytest.mark.parametrize('ending,content', [
+@pytest.mark.parametrize('ending, content', [
     ('.json', '["this", "that"]\n'),
     ('.yml', '[this, that]\n'),
-    pytest.mark.xfail(('.toml', '[\'this\', \'that\']'), reason='toml literal lists are not supported')
+    pytest.param(
+        '.toml', '[\'this\', \'that\']',
+        marks=pytest.mark.xfail(reason='toml literal lists are not supported')
+    )
 ])
 def test_parse_from_file_list(ending, content, mock_os_environ, tmpdir):
     """Check that the "from_file" extension works as expected.
@@ -489,3 +520,21 @@ def test_setup_logging(monkeypatch, update, mock_empty_os_environ):
     assert 'handlers' in mock_dict_config.call_args[0][0]['root'], \
         'Expected default logging configuration to be updated, not overwritten.'
     assert mock_dict_config.call_args[0][0]['root']['level'] == 'DEBUG' if update else 'INFO'
+
+
+def test_update_log(caplog, mock_empty_os_environ, mock_settings_file):
+    """Test writing out an example configuration file."""
+    settings_file_path, expected = mock_settings_file
+    settings_map = settings_parser.Settings(prefix='TEST_STUFF',
+                                            settings_files=settings_file_path)
+    assert settings_map.update_log == '', 'before updating, the update log should be empty'
+    settings_map.update({'a': settings_parser.REMOVED, 'b': 2})
+    lines = settings_map.update_log.split('\n')
+    assert len(lines) == 4
+    expected_lines = [
+        'loaded testgroup.testvar from {}'.format(settings_file_path),
+        'loaded othergroup.blabla from {}'.format(settings_file_path),
+        'removed a from external',
+        'loaded b from external'
+    ]
+    assert set(lines) == set(expected_lines), 'Unexpected lines in update_log'

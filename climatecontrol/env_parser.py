@@ -1,13 +1,13 @@
 """Environment variable parser."""
 
-import json
 import logging
 import os
-from typing import Any, Dict, Iterator, Mapping, NamedTuple, Sequence, Set
+import warnings
+from typing import Iterable, Iterator, NamedTuple, Tuple
 
 from . import file_loaders
 from .fragment import Fragment
-from .utils import merge_nested
+from .utils import parse_as_json_if_possible
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +28,8 @@ class EnvParser:
             occurrences of a single `split_char` character will be considered
             nested settings boundaries. Note that if a file is given, the
             maximum depth does not apply as the definition is clear.
+            **WARNING:** This feature is deprecated as of version 0.8 and will be
+            removed in a future version.
         settings_file_suffix: Suffix to identify an environment variable as a
             settings file.
 
@@ -61,25 +63,26 @@ class EnvParser:
                  split_char: str = '_',
                  implicit_depth: int = 0,
                  settings_file_suffix: str = 'SETTINGS_FILE',
-                 exclude: Sequence[str] = ()) -> None:
+                 exclude: Iterable[str] = ()) -> None:
         """Initialize object."""
         self.settings_file_suffix = str(settings_file_suffix)
         self.implicit_depth = int(implicit_depth)
+        if implicit_depth != 0:
+            warnings.warn('Setting "implicit_depth" is deprecated and will be removed in a future version',
+                          DeprecationWarning)
         self.split_char = split_char
         self.prefix = prefix
-        self.exclude = exclude
+        self.exclude = exclude  # type: ignore
 
     @property
-    def exclude(self) -> Set[str]:
+    def exclude(self) -> Tuple[str, ...]:
         """Return excluded environment variables."""
         exclude = self._exclude.union({self.settings_file_env_var})
-        return set(s.lower() for s in exclude)
+        return tuple(set(s.lower() for s in exclude))
 
     @exclude.setter
-    def exclude(self, exclude: Sequence = ()) -> None:
+    def exclude(self, exclude: Iterable[str] = ()) -> None:
         """Set excluded environment variables."""
-        if isinstance(exclude, str):
-            exclude = (exclude,)
         self._exclude = set(exclude)
 
     @property
@@ -154,7 +157,7 @@ class EnvParser:
                 nested_keys = list(self._iter_nested_keys(env_var))
                 if not nested_keys:
                     continue
-                value = self._parse_env_var_value(env_var_value)
+                value = parse_as_json_if_possible(env_var_value)
                 fragment = Fragment(value=value, path=nested_keys, source='ENV:' + env_var)
                 yield fragment
 
@@ -187,13 +190,3 @@ class EnvParser:
         elif s.endswith(self.split_char):
             s = s[:-len(self.split_char)]
         return s
-
-    @staticmethod
-    def _parse_env_var_value(v: str) -> Any:
-        """Parse an environment variable value parsing as json."""
-        if isinstance(v, str):
-            try:
-                return json.loads(v)
-            except json.JSONDecodeError:
-                pass
-        return v

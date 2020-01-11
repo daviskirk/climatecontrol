@@ -1,12 +1,12 @@
 """Module for loading various file formats."""
 
+import glob
 import json
 import os
 from abc import ABC, abstractmethod
 from collections import OrderedDict
-import glob
 from typing import Tuple, Iterator, List  # noqa: F401
-from typing import Any, Dict, Mapping, NamedTuple
+from typing import Any, Dict, Mapping
 
 from .exceptions import NoCompatibleLoaderFoundError
 from .fragment import Fragment
@@ -43,6 +43,8 @@ def iter_load(path_or_content: str) -> Iterator[Fragment]:
             this filepath or content type.
 
     """
+    if not path_or_content:
+        return
     expanded_path_or_content = os.path.expanduser(os.path.expandvars(path_or_content))
     globbed_files = glob.glob(expanded_path_or_content)  # type: List[str]
     if globbed_files:
