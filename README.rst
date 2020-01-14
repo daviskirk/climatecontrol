@@ -8,6 +8,19 @@ CLIMATECONTROL controls your applications settings and configuration
 environment. It is a Python library for loading app configurations from files
 and/or namespaced environment variables.
 
+Features
+--------
+
+* Separation of settings and code
+* Loading from files (`.yaml`, `.json`, `.toml`)
+* Loading multiple files using glob syntax
+* Loading from environment variables, including loading of nested values
+* Freely reference nested configurations via files or environment variables
+* CLI integration
+* Validation using the Validation library of your choice
+* Logging configuration integration
+* Testing integration
+
 
 Install
 -------
@@ -135,8 +148,8 @@ examples will work using the other file syntaxes as well.
 Advanced Features
 -----------------
 
-Setting variables whos values are saved in files
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Setting variables from values saved in files
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Sometimes we don't want to save values in plain text in environment files or in
 the settings file itself. Instead we have a file that contains the value of the
@@ -163,8 +176,8 @@ will both write the content of the file at `"/home/myuser/supersecret.txt"`
 into the variable `section1 -> subsection1`.
 
 
-Setting variables whos values are saved in specific environment variables
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Setting variables from values saved in specific environment variables
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Similarly, to read a value from an environment variable, add a `"_from_env"` to
 the variable name. For example if we wanted to obtain a value from the variable
@@ -310,12 +323,6 @@ temporarily:
        print(settings_map['a'])  # outputs: 2
    # After the context exits the settings map
    print(settings_map['a'])  # outputs: 1
-
-
-Python version support
-----------------------
-
-Do to the use of modern python features, only python 3.5 and above are supported.
 
 
 .. |Build Status| image:: https://travis-ci.org/daviskirk/climatecontrol.svg?branch=master

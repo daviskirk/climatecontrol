@@ -64,3 +64,6 @@ target/
 
 # Type Checking
 .mypy_cache
+
+# Misc
+*.swp
