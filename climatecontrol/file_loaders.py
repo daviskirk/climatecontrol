@@ -1,13 +1,15 @@
 """Module for loading various file formats."""
 
+import glob
 import json
 import os
 from abc import ABC, abstractmethod
 from collections import OrderedDict
-from typing import Tuple, List  # noqa: F401
+from typing import Tuple, Iterator, List  # noqa: F401
 from typing import Any, Dict, Mapping
 
 from .exceptions import NoCompatibleLoaderFoundError
+from .fragment import Fragment
 
 try:
     import toml
@@ -19,36 +21,13 @@ except ImportError:
     yaml = None  # type: ignore
 
 
-def load_from_filepath(filepath: str, allow_unknown_file_type=False):
-    """Read settings file from a filepath.
-
-    Returns:
-        Data structure loaded/parsed from a compatible `FileLoader`. If no
-        compatible file loaded can be found and `allow_unknown_file_type` is
-        set, return the raw file contents (if `allow_unknown_file_type` is not
-        set we raise an error on this case).
-
-    Raises:
-        SettingsLoadError
-
-    """
-    try:
-        return load_from_filepath_or_content(filepath, _allow_content=False)
-    except NoCompatibleLoaderFoundError:
-        if not allow_unknown_file_type:
-            raise
-        # Load the raw contents from file and assume that they are to be
-        # interpreted as a raw string.
-        with open(filepath) as f:
-            return f.read().strip()
-
-
-def load_from_filepath_or_content(path_or_content: str, _allow_content=True) -> Dict[str, Any]:
+def iter_load(path_or_content: str) -> Iterator[Fragment]:
     """Read settings file from a filepath or from a string representing the file contents.
 
-    If ``path_or_content`` is a valid filename, load the file. If
-    ``path_or_content`` represents a json, yaml or toml string instead (the
-    contents of a json/toml/yaml file), parse the string directly.
+    If ``path_or_content`` is a valid filename or glob expression, load the
+    file (or all matching files). If ``path_or_content`` represents a json,
+    yaml or toml string instead (the contents of a json/toml/yaml file), parse
+    the string directly.
 
     Note that json, yaml and toml files are read. If ``path_or_content`` is a
     string, we will try to guess what file type you meant. Note that this last
@@ -64,18 +43,61 @@ def load_from_filepath_or_content(path_or_content: str, _allow_content=True) -> 
             this filepath or content type.
 
     """
-    file_data = {}  # type: Dict
     if not path_or_content:
+        return
+    expanded_path_or_content = os.path.expanduser(os.path.expandvars(path_or_content))
+    globbed_files = glob.glob(expanded_path_or_content)  # type: List[str]
+    if globbed_files:
+        for filepath in sorted(globbed_files):
+            yield Fragment(value=load_from_filepath(filepath), source=filepath)
+        return
+
+    # assume content if no files were found
+    yield Fragment(value=load_from_content(path_or_content), source='content')
+
+
+def load_from_content(content: str) -> Dict[str, Any]:
+    """Read settings from a content string."""
+    file_data = {}  # type: Dict
+    if not content:
         return file_data
     for loader in FileLoader.registered_loaders:
-        if loader.is_path(path_or_content):
-            file_data = loader.from_path(path_or_content)
-            break
-        if _allow_content and loader.is_content(path_or_content):
-            file_data = loader.from_content(path_or_content)
+        if loader.is_content(content):
+            file_data = loader.from_content(content)
             break
     else:
-        raise NoCompatibleLoaderFoundError('Failed to load settings. No compatible loader: {}'.format(path_or_content))
+        raise NoCompatibleLoaderFoundError(
+            'Failed to load settings from content. No compatible loader: {}'
+            .format(content)
+        )
+    return file_data
+
+
+def load_from_filepath(filepath: str) -> Dict[str, Any]:
+    """Read settings file from a filepath or from a string representing the file contents.
+
+    Args:
+        filepath: Path to file or file contents
+
+    Raises:
+        FileLoadError: when an error occurs during the loading of a file.
+        ContentLoadError: when an error occurs during the loading of file contents.
+        NoCompatibleLoaderFoundError: when no compatible loader was found for
+            this filepath or content type.
+
+    """
+    file_data = {}  # type: Dict
+    if not filepath:
+        return file_data
+    for loader in FileLoader.registered_loaders:
+        if loader.is_path(filepath):
+            file_data = loader.from_path(filepath)
+            break
+    else:
+        raise NoCompatibleLoaderFoundError(
+            'Failed to load settings from filepath. '
+            'No compatible loader for file: {}'.format(filepath)
+        )
     return file_data
 
 

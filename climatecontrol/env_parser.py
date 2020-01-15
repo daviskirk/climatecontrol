@@ -1,17 +1,17 @@
 """Environment variable parser."""
 
-import json
 import logging
 import os
-from typing import Any, Dict, Iterator, Mapping, NamedTuple, Sequence, Set
+import warnings
+from typing import Iterable, Iterator, NamedTuple, Tuple
 
-from .file_loaders import load_from_filepath_or_content
-from .utils import update_nested
-
+from . import file_loaders
+from .fragment import Fragment
+from .utils import parse_as_json_if_possible
 
 logger = logging.getLogger(__name__)
 
-EnvSetting = NamedTuple('EnvSetting', [('name', str), ('value', Mapping[str, Any])])
+EnvSetting = NamedTuple('EnvSetting', [('name', str), ('value', Fragment)])
 
 
 class EnvParser:
@@ -28,6 +28,8 @@ class EnvParser:
             occurrences of a single `split_char` character will be considered
             nested settings boundaries. Note that if a file is given, the
             maximum depth does not apply as the definition is clear.
+            **WARNING:** This feature is deprecated as of version 0.8 and will be
+            removed in a future version.
         settings_file_suffix: Suffix to identify an environment variable as a
             settings file.
 
@@ -57,29 +59,30 @@ class EnvParser:
     """
 
     def __init__(self,
-                 prefix: str = 'APP_SETTINGS',
+                 prefix: str = 'CLIMATECONTROL',
                  split_char: str = '_',
                  implicit_depth: int = 0,
                  settings_file_suffix: str = 'SETTINGS_FILE',
-                 exclude: Sequence[str] = ()) -> None:
+                 exclude: Iterable[str] = ()) -> None:
         """Initialize object."""
         self.settings_file_suffix = str(settings_file_suffix)
         self.implicit_depth = int(implicit_depth)
+        if implicit_depth != 0:
+            warnings.warn('Setting "implicit_depth" is deprecated and will be removed in a future version',
+                          DeprecationWarning)
         self.split_char = split_char
         self.prefix = prefix
-        self.exclude = exclude
+        self.exclude = exclude  # type: ignore
 
     @property
-    def exclude(self) -> Set[str]:
+    def exclude(self) -> Tuple[str, ...]:
         """Return excluded environment variables."""
         exclude = self._exclude.union({self.settings_file_env_var})
-        return set(s.lower() for s in exclude)
+        return tuple(set(s.lower() for s in exclude))
 
     @exclude.setter
-    def exclude(self, exclude: Sequence = ()) -> None:
+    def exclude(self, exclude: Iterable[str] = ()) -> None:
         """Set excluded environment variables."""
-        if isinstance(exclude, str):
-            exclude = (exclude,)
         self._exclude = set(exclude)
 
     @property
@@ -115,7 +118,7 @@ class EnvParser:
             raise ValueError('``split_char`` must be a single character')
         self._split_char = str(char)
 
-    def parse(self, include_vars=True, include_file: bool = True) -> Dict[str, Any]:
+    def iter_load(self, include_vars=True, include_file: bool = True) -> Iterator[Fragment]:
         """Convert environment variables to nested dict.
 
         Note that all string inputs are case insensitive and all resulting keys
@@ -142,30 +145,24 @@ class EnvParser:
             {'testgroup': {'testvar': 27}}
 
         """
-        settings_map = {}  # type: dict
-        for env_var, settings in self._iter_parse(include_vars=include_vars, include_file=include_file):
-            logger.info('Parsed setting from env var: %s.', env_var)
-            update_nested(settings_map, settings)
-        return settings_map
+        if include_file:
+            settings_file_str = os.getenv(self.settings_file_env_var, '')
+            settings_files = [s.strip() for s in settings_file_str.split(',')]
+            for settings_file in settings_files:
+                for fragment in file_loaders.iter_load(settings_file):
+                    fragment.source = 'ENV:' + str(self.settings_file_env_var) + ':' + fragment.source
+                    yield fragment
+        if include_vars:
+            for env_var, env_var_value in os.environ.items():
+                nested_keys = list(self._iter_nested_keys(env_var))
+                if not nested_keys:
+                    continue
+                value = parse_as_json_if_possible(env_var_value)
+                fragment = Fragment(value=value, path=nested_keys, source='ENV:' + env_var)
+                yield fragment
 
     def _build_env_var(self, *parts: str) -> str:
         return self.split_char.join(self._strip_split_char(p).upper() for p in parts)
-
-    def _build_settings_update(self, keys: Sequence[str], value: Any) -> dict:
-        """Build a settings update dictionary.
-
-        Args:
-            keys: Sequence of keys, each key representing a level in a nested dictionary
-            value: Value that is assigned to the key at the deepest level.
-
-        """
-        update = {}  # type: dict
-        u = update
-        for key in keys[:-1]:
-            u[key] = {}
-            u = u[key]
-        u[keys[-1]] = value
-        return update
 
     def _iter_nested_keys(self, env_var: str) -> Iterator[str]:
         """Iterate over nested keys of an environment variable name.
@@ -187,45 +184,9 @@ class EnvParser:
             elif section:
                 yield section
 
-    def _iter_parse(self, include_vars: bool = True, include_file: bool = True) -> Iterator[EnvSetting]:
-        """Use in ``parse``.
-
-        Iterate over valid environment variables and files defined by
-        environment variables and yieldan envirnment settings tuple for each
-        valid entry.
-
-        See also:
-            :meth:`parse`
-
-        """
-        if include_file:
-            settings_file = os.environ.get(self.settings_file_env_var)
-            if settings_file:
-                yield EnvSetting(self.settings_file_env_var, load_from_filepath_or_content(settings_file))
-        if include_vars:
-            for env_var in os.environ:
-                nested_keys = list(self._iter_nested_keys(env_var))
-                if not nested_keys:
-                    continue
-                value = self._get_env_var_value(env_var)
-                update = self._build_settings_update(nested_keys, value)
-                if update:
-                    yield EnvSetting(env_var, update)
-
     def _strip_split_char(self, s):
         if s.startswith(self.split_char):
             s = s[len(self.split_char):]
         elif s.endswith(self.split_char):
             s = s[:-len(self.split_char)]
         return s
-
-    @staticmethod
-    def _get_env_var_value(env_var: str) -> Any:
-        """Parse an environment variable value using the toml parser."""
-        v = os.environ[env_var]
-        if isinstance(v, str):
-            try:
-                return json.loads(v)
-            except json.JSONDecodeError:
-                pass
-        return v

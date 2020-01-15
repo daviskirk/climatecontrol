@@ -5,12 +5,10 @@
 import os
 from setuptools import setup
 
-requirements = [
-    'typing'
-]
+requirements = []  # type: list
 
 test_requirements = [
-    'pytest>=3.2.1,<4.0.0',
+    'pytest',
     'pytest-mock',
     'pytest-cov>=2.5.1',
     'toml>=0.9.2',
@@ -20,23 +18,11 @@ test_requirements = [
 
 rootdir = os.path.abspath(os.path.dirname(__file__))
 
-
-def read(fname):
-    """Read a file from path.
-
-    Utility function to read the README file. Used for the long_description.
-    It's nice, because now 1) we have a top level README file and 2) it's
-    easier to type in the README file than to put a raw string in below ...
-
-    """
-    return open(os.path.join(rootdir, fname)).read()
-
-
 setup(
     name='climatecontrol',
     use_scm_version=True,
     description='Python library for loading app configurations from files and/or namespaced environment variables',
-    long_description=read('README.rst'),
+    long_description=open(os.path.join(rootdir, 'README.rst')).read(),
     author='Davis Kirkendall',
     author_email='davis.e.kirkendall@gmail.com',
     url='https://github.com/daviskirk/climatecontrol',
@@ -58,6 +44,7 @@ setup(
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
     ],
     setup_requires=['pytest-runner', 'setuptools_scm'],
     tests_require=test_requirements

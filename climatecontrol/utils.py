@@ -1,48 +1,78 @@
 """Utility functions."""
 
-from typing import Type  # noqa: F401
-from typing import Dict, Iterator, Mapping, Sequence, Union
+from copy import deepcopy
+from enum import Enum
+import json
+from itertools import zip_longest
+from typing import Any, Mapping, Sequence, Union
 
 
-def update_nested(d: Dict, u: Mapping) -> Dict:
-    """Update nested mapping ``d`` with nested mapping ``u``."""
-    for k, v in u.items():
-        if isinstance(v, Mapping):
-            r = update_nested(d.get(k, {}), v)
-            d[k] = r
-        else:
-            d[k] = u[k]
-    return d
-
-
-def iter_hierarchy(data: Union[Mapping, Sequence], levels: Sequence[str] = ()) -> Iterator[Sequence[str]]:
-    """Iterate over nested keys and yield a tuple describing the level of hierarchy of each leaf.
+def get_nested(obj: Union[Mapping, Sequence], path: Sequence) -> Any:
+    """Get element of a sequence or map based on multiple nested keys.
 
     Args:
-        data: Nested mapping or non-string sequence.
+        obj: Object to index from
+        path: Sequence of nested keys.
 
     Example:
-        >>> list(_iter_hierarchy({'a': {'b': [{'c': 'item'}, 123]}}))
-        [('a', 'b', '[0]', 'c'), ('a', 'b', '[1]')]
+        >>> get_nested({'a': {'b': [1, 2]}}, ['a', 'b', 0])
+        1
 
     """
-    levels = list(levels)
-    if not data:
-        yield levels
-        return data
-    elif isinstance(data, Mapping):
-        level_type = Mapping  # type: Type
-        items = tuple(data.items())
-    elif isinstance(data, Sequence) and not isinstance(data, str):
-        level_type = Sequence
-        items = tuple(enumerate(data))
-    else:
-        yield levels
-        return
-    for k, v in items:
-        new_level = '[{}]'.format(k) if level_type is Sequence else str(k)
-        new_levels = tuple(levels + [new_level])
-        if isinstance(v, (Mapping, Sequence)) and not isinstance(v, str):
-            yield from iter_hierarchy(v, new_levels)
-        else:
-            yield new_levels
+    result = obj
+    for subpath in path:
+        result = result[subpath]
+    return result
+
+
+def merge_nested(d: Any, u: Any) -> Any:
+    """Merge nested mapping or sequence ``d`` with nested mapping or sequence ``u``.
+
+    Dictionaries are merge recursively while sequences are merged by index (and
+    expanded automatically if longer). Note that the special value
+    :data:``EMPTY`` can be used in `u` to NOT overwrite a sequence item.
+
+    Example:
+        merge_nested({'a': {'b': [3, {'c': 4}, 5]}}, {'a': {'b': [EMPTY, {'d': 6}]}})
+        {'a': {'b': [3, {'c': 4, 'd': 6}, 5]}}
+
+    """
+    if isinstance(d, Mapping):
+        new_dict = dict(**d)  # type: dict
+        if not isinstance(u, Mapping):
+            return deepcopy(u)
+        for k, u_v in u.items():
+            new_dict[k] = merge_nested(d.get(k), u_v)
+        return new_dict
+    elif isinstance(d, Sequence) and not isinstance(d, str):
+        if not isinstance(u, Sequence) or isinstance(u, str):
+            return deepcopy(u)
+        new_list = [
+            merge_nested(d_item, u_item) if u_item is not EMPTY else d_item
+            for d_item, u_item
+            in zip_longest(d, u, fillvalue=EMPTY)
+        ]
+        return new_list
+    return deepcopy(u)
+
+
+def parse_as_json_if_possible(v: str) -> Any:
+    """Parse a string value as json if possible, but fallback to the string if not."""
+    if isinstance(v, str):
+        try:
+            return json.loads(v)
+        except json.JSONDecodeError:
+            pass
+    return v
+
+
+class _Empty(Enum):
+    """Object representing an empty item."""
+
+    EMPTY = None
+
+    def __repr__(self):
+        return '<EMPTY>'  # pragma: nocover
+
+
+EMPTY = _Empty.EMPTY

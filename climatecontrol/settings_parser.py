@@ -1,14 +1,18 @@
 """Settings parser."""
 
-import json
+from enum import Enum
+import itertools
 import logging
+import warnings
 import os
 from contextlib import contextmanager
 from copy import deepcopy
 from pprint import pformat
-from typing import List, Type, TypeVar, Tuple # noqa F401
-from typing import (cast, Any, Callable, Sequence,
-                    Optional, Union, Mapping, Dict, Iterator, NamedTuple)
+from typing import (  # noqa: F401
+    Any, Callable, Dict, Iterable, Iterator, List,
+    Mapping, MutableMapping, MutableSequence, Optional,
+    Sequence, TypeVar, Union, cast
+)
 
 try:
     import click
@@ -17,16 +21,16 @@ except ImportError:
 
 from .env_parser import EnvParser
 from .exceptions import SettingsValidationError  # noqa: F401  # Import here for backwards compatability.
-from .file_loaders import FileLoader, load_from_filepath, load_from_filepath_or_content
+from .file_loaders import (
+    FileLoader, NoCompatibleLoaderFoundError, iter_load, load_from_filepath
+)
+from .fragment import Fragment
 from .logtools import DEFAULT_LOG_SETTINGS, logging_config
-from .utils import iter_hierarchy, update_nested
+from .utils import merge_nested, parse_as_json_if_possible
 
 
 logger = logging.getLogger(__name__)
 T = TypeVar('T')
-
-
-Fragment = NamedTuple('Fragment', [('data', Dict[str, Any]), ('source', str)])
 
 
 class Settings(Mapping):
@@ -42,14 +46,14 @@ class Settings(Mapping):
             result of the settings. The function should take a single
             nested dictionary argument (the settings map) as an argument
             and output a nested dictionary.
-        update_on_init: If set to `False` no parsing is performed upon
+        update_on_init: (Deprecated) If set to `False` no parsing is performed upon
             initialization of the object. You will need to call update
             manually if you want load use any settings.
 
     Args:
         settings_files: See attribute
         parser: See attribute
-        update_on_init: If set to ``True``, read all configurations upon initialization.
+        update_on_init: (Deprecated) If set to ``True``, read all configurations upon initialization.
         **env_parser_kwargs: Arguments passed to :class:`EnvParser` constructor.
 
     Example:
@@ -58,8 +62,8 @@ class Settings(Mapping):
         >>> os.environ['MY_APP_SECTION1_SUB1'] = 'test1'
         >>> os.environ['MY_APP_SECTION2_SUB2'] = 'test2'
         >>> os.environ['MY_APP_SECTION2_SUB3'] = 'test3'
-        >>> settings_map = Settings(prefix='MY_APP', implicit_depth=1)
-        >>> dict(settings_map)
+        >>> settings_manager = SettingsManager(prefix='MY_APP')
+        >>> dict(settings_manager)
         {'value0': 'test0', 'section1': {'subsection1': 'test1'}, 'section2': {'sub2': 'test2', 'sub3': 'test3'}}
 
     See Also:
@@ -68,17 +72,21 @@ class Settings(Mapping):
     """
 
     def __init__(self,
-                 settings_files: Optional[Sequence[str]] = None,
-                 parser: Optional[Callable] = None,
-                 update_on_init: bool = True,
+                 settings_files: Sequence[str] = (),
+                 parser: Optional[Callable[[Mapping], Mapping]] = None,
+                 update_on_init: Optional[bool] = None,
                  **env_parser_kwargs) -> None:
         """Initialize settings object."""
         self.env_parser = EnvParser(**(env_parser_kwargs or {}))
         self.parser = parser
         self.settings_files = settings_files
         self.update_data = {}  # type: dict
+        self.fragments = []  # type: List[Fragment]
         self._data = {}  # type: Mapping
+        self._initialized = False  # type: bool
 
+        if update_on_init is not None:
+            warnings.warn('setting update_on_init is deprecated', DeprecationWarning)
         if update_on_init:
             self.update()
 
@@ -89,18 +97,22 @@ class Settings(Mapping):
         return len(self._data)
 
     def __getitem__(self, key: str) -> Any:
+        if not self._initialized:
+            self.update()
         return self._data[key]
 
     def __iter__(self) -> Iterator[str]:
+        if not self._initialized:
+            self.update()
         yield from self._data
 
     @property
-    def parser(self) -> Optional[Callable]:
+    def parser(self) -> Optional[Callable[[Mapping], Mapping]]:
         """Return settings parser function."""
         return self._parse
 
     @parser.setter
-    def parser(self, value: Optional[Callable]) -> None:
+    def parser(self, value: Optional[Callable[[Mapping], Mapping]]) -> None:
         """Set the settings parser function."""
         if value and not callable(value):
             raise TypeError('If given, ``parser`` must be a callable')
@@ -112,14 +124,28 @@ class Settings(Mapping):
         return self._settings_files
 
     @settings_files.setter
-    def settings_files(self, files: Sequence) -> None:
+    def settings_files(self, files: Union[str, Iterable[str]]) -> None:
         """Set settings files to use when parsing settings."""
         files = files or ()
         if isinstance(files, str):
             files = (files,)
         self._settings_files = list(files)
 
-    def update(self, d: Optional[Union[Mapping, Dict]] = None, clear: bool = False) -> None:
+    @property
+    def update_log(self) -> str:
+        """Log of all each loaded settings variable."""
+        def iter_fragment_lines(fragment: Fragment) -> Iterator[str]:
+            for leaf in fragment.iter_leaves():
+                action = 'removed' if leaf.value == REMOVED else 'loaded'
+                yield action + ' ' + '.'.join(str(p) for p in leaf.path) + ' from ' + str(leaf.source)
+
+        lines = itertools.chain.from_iterable(
+            iter_fragment_lines(fragment) for fragment in self.fragments
+        )
+        result = '\n'.join(lines)
+        return result
+
+    def update(self, d: Optional[Mapping] = None, clear: bool = False) -> None:
         """Update object settings and reload files and environment variables.
 
         Args:
@@ -141,29 +167,44 @@ class Settings(Mapping):
             {'section': {'value': 'test', 'new_value': 'new'}, 'section2': {'new_env_value': 'new_env_data'}}
 
         """
-        settings_map = {}  # type: dict
-
         # External data is any data that was explicitely assigned through a
         # call to :meth:`update`.
-        update_data = {} if clear else deepcopy(self.update_data)
+        update_data = {} if clear else self.update_data
         if d:
-            update_nested(update_data, d)
+            update_data = merge_nested(update_data, d)
 
-        def update_fragment(fragment: Fragment) -> None:
-            preprocessed = Fragment(self.preprocess_fragment(fragment.data), fragment.source)
-            self._log_assignments(preprocessed)
-            update_nested(settings_map, preprocessed.data)
+        # Compile a list of fragments
+        fragments = []
 
-        # Update settings
-        for fragment in self._iter_load_files():
-            update_fragment(fragment)
-        update_fragment(Fragment(self.env_parser.parse(), 'environment variables'))
-        update_fragment(Fragment(update_data, 'external'))
+        for fragment in itertools.chain(
+                self._iter_load_files(),
+                self.env_parser.iter_load(),
+                [Fragment(value=update_data, source='external')]
+        ):
+            fragments.append(fragment)
+            fragments.extend(self.process_fragment(fragment))
+
+        # Combine the fragments into one final fragment
+        combined_fragment = None  # type: Optional[Fragment]
+        for fragment in fragments:
+            if combined_fragment is None:
+                combined_fragment = fragment
+            else:
+                combined_fragment = combined_fragment.merge(fragment)
+
+        # Obtain settings map
+        if combined_fragment is None:
+            settings_map = {}  # type: dict
+        else:
+            settings_map = combined_fragment.expand_value_with_path()
+            clean_removed_items(settings_map)
 
         self._data = self.parse(settings_map)
 
-        # If parsing was successfull, update external data
+        # If parsing was successfull, update external data and fragments.
         self.update_data = update_data
+        self.fragments = fragments
+        self._initialized = True
 
     def parse(self, data: Mapping) -> Mapping:
         """Parse data into settings.
@@ -188,20 +229,26 @@ class Settings(Mapping):
         ``climatecontrol`` package.
 
         """
-        logging_settings = deepcopy(DEFAULT_LOG_SETTINGS)
-        logging_settings_update = self.get(logging_section, {})
+        logging_settings = DEFAULT_LOG_SETTINGS
+        logging_settings_update = self.get(logging_section)
         if logging_settings_update:
-            update_nested(logging_settings, logging_settings_update)
+            logging_settings = merge_nested(logging_settings, logging_settings_update)
         logging_config.dictConfig(logging_settings)
 
-    def click_settings_file_option(self, **kw) -> Callable:
+    def click_settings_file_option(self, **kw) -> Callable[..., Any]:
         """See :func:`cli_utils.click_settings_file_option`."""
         from . import cli_utils
         return cli_utils.click_settings_file_option(self, **kw)
 
-    def preprocess_fragment(self, fragment: T) -> T:
+    def process_fragment(self, fragment: Fragment) -> Iterator[Fragment]:
         """Preprocess a settings fragment and return the new version."""
-        return self._render_from_file_vars(fragment)
+        processors = [
+            replace_from_file_vars, replace_from_env_vars
+        ]  # type: List[Callable[[Fragment], Iterator[Fragment]]]
+        for process in processors:
+            for new_fragment in process(fragment):
+                yield new_fragment
+                yield from self.process_fragment(new_fragment)
 
     def to_config(self, *, save_to: str = None, style: str = '.json') -> Optional[str]:
         """Generate a settings file from the current settings."""
@@ -209,7 +256,7 @@ class Settings(Mapping):
             style = os.path.splitext(save_to)[1]
         for loader in FileLoader.registered_loaders:
             if style in loader.valid_file_extensions:
-                s = loader.to_content(self._data)
+                s = loader.to_content(dict(self))
                 break
         else:
             raise ValueError('Not a valid style / file extension: {}'.format(style))
@@ -239,70 +286,114 @@ class Settings(Mapping):
 
         """
         archived_settings = deepcopy(self._data)
-        archived_settings_files = deepcopy(self._settings_files)
+        archived_settings_files = deepcopy(self.settings_files)
         archived_update_data = deepcopy(self.update_data)
         yield self
         self._data = archived_settings
-        self._settings_files = archived_settings_files
+        self.settings_files = archived_settings_files
         self.update_data = archived_update_data
 
-    def _render_from_file_vars(self, data: T, postfix_trigger='_from_file') -> T:
-        """Read and replace settings values from content local files.
-
-        Args:
-            data: Given subset of settings data (or entire settings mapping)
-            postfix_trigger: Optionally configurable string to trigger a local
-                file value. If a key is found which ends with this string, the
-                value is assumed to be a file path and the settings value will
-                be set to the content of the file.
-
-        Returns:
-            An updated copy of `data` with keys and values replaced accordingly.
-
-        """
-        if not data:
-            return data
-        elif isinstance(data, Mapping):
-            new_data = {k: v for k, v in data.items()}  # type: Any
-            items = tuple(data.items())
-        elif isinstance(data, Sequence) and not isinstance(data, str):
-            new_data = [item for item in data]
-            items = tuple(enumerate(data))
-        else:
-            return cast(T, data)
-        for k, v in items:
-            if isinstance(v, str) and isinstance(k, str) and k.lower().endswith(postfix_trigger):
-                key_with_postfix = k
-                filepath = v
-                # Reassign value (v) using the contents of the file.
-                try:
-                    v = load_from_filepath(filepath, allow_unknown_file_type=True)
-                except FileNotFoundError as e:
-                    logger.info('Error while trying to load variable from file: %s. (%s) Skipping...',
-                                filepath, e)
-                else:
-                    k = k[:-len(postfix_trigger)]  # Use the "actual" key from here on.
-                    new_data[k] = v
-                    logger.info('Settings key %s set to contents of file "%s"', k, filepath)
-                finally:
-                    del new_data[key_with_postfix]
-            if isinstance(v, (Mapping, Sequence)) and not isinstance(v, str):
-                parsed_v = self._render_from_file_vars(v)
-                new_data[k] = parsed_v
-        return new_data
-
     def _iter_load_files(self) -> Iterator[Fragment]:
-        for settings_file in self.settings_files:
-            file_update = load_from_filepath_or_content(settings_file)
-            yield Fragment(data=file_update, source=str(settings_file))
+        for entry in self.settings_files:
+            yield from iter_load(entry)
 
-    def _log_assignments(self, fragment: Fragment) -> None:
-        messages = []
-        for levels in iter_hierarchy(fragment.data):
-            if levels:
-                message = '.'.join(levels)
-                messages.append(message)
-        if messages:
-            logger.debug('Assigned settings%s: %s',
-                         ' from ' + str(fragment.source) if fragment.source else '',
-                         json.dumps(messages))
+
+def replace_from_env_vars(fragment: Fragment, postfix_trigger: str = '_from_env') -> Iterator[Fragment]:
+    """Read and replace settings values from environment variables.
+
+    Args:
+        fragment: Fragment to process
+        postfix_trigger: Optionally configurable string to trigger a
+            replacement with an environment variable. If a key is found which
+            ends with this string, the value is assumed to be the name of an
+            environemtn variable and the settings value will be set to the
+            contents of that variable.
+
+    Yields:
+        Additional fragments to patch the original fragment.
+
+    """
+    for leaf in fragment.iter_leaves():
+        if not leaf.path or leaf.value == REMOVED:
+            continue
+        key, value = leaf.path[-1], leaf.value
+        if isinstance(value, str) and isinstance(key, str) and key.lower().endswith(postfix_trigger):
+            env_var = value
+            yield leaf.clone(value=REMOVED)
+            try:
+                env_var_value = os.environ[env_var]
+            except KeyError as e:
+                logger.info('Error while trying to load environment variable: %s. (%s) Skipping...',
+                            env_var, e)
+            else:
+                new_key = key[:-len(postfix_trigger)]
+                new_value = parse_as_json_if_possible(env_var_value)
+                yield leaf.clone(value=new_value, path=list(leaf.path[:-1]) + [new_key])
+
+
+def replace_from_file_vars(fragment: Fragment, postfix_trigger: str = '_from_file') -> Iterator[Fragment]:
+    """Read and replace settings values from content local files.
+
+    Args:
+        fragment: Fragment to process
+        postfix_trigger: Optionally configurable string to trigger a local
+            file value. If a key is found which ends with this string, the
+            value is assumed to be a file path and the settings value will
+            be set to the content of the file.
+
+    Yields:
+        Additional fragments to patch the original fragment.
+
+    """
+    for leaf in fragment.iter_leaves():
+        if not leaf.path or leaf.value == REMOVED:
+            continue
+        key, value = leaf.path[-1], leaf.value
+        if isinstance(value, str) and isinstance(key, str) and key.lower().endswith(postfix_trigger):
+            filepath = value
+            yield leaf.clone(value=REMOVED)
+            try:
+                try:
+                    new_value = load_from_filepath(filepath)  # type: Any
+                except NoCompatibleLoaderFoundError:
+                    # just load as plain text file and interpret as string
+                    with open(filepath) as f:
+                        new_value = f.read().strip()
+            except FileNotFoundError as e:
+                logger.info('Error while trying to load variable from file: %s. (%s) Skipping...',
+                            filepath, e)
+            else:
+                new_key = key[:-len(postfix_trigger)]
+                yield leaf.clone(value=new_value, path=list(leaf.path[:-1]) + [new_key])
+
+
+def clean_removed_items(obj):
+    """Remove all keys that contain a removed key indicated by a :data:``REMOVED`` object."""
+    if isinstance(obj, MutableMapping):
+        items = obj.items()  # type: Any
+    elif isinstance(obj, MutableSequence):
+        items = enumerate(obj)
+    else:
+        return
+
+    keys_to_remove = []
+    for key, value in items:
+        if value == REMOVED:
+            keys_to_remove.append(key)
+        else:
+            clean_removed_items(value)
+
+    for key in keys_to_remove:
+        del obj[key]
+
+
+class _Removed(Enum):
+    """Object representing an empty item."""
+
+    REMOVED = None
+
+    def __repr__(self):
+        return '<REMOVED>'  # pragma: nocover
+
+
+REMOVED = _Removed.REMOVED

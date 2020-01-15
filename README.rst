@@ -1,4 +1,4 @@
-|Build Status| |Coverage Status| |PyPi Status| |PyPI license|
+|Build Status| |Coverage Status| |PyPi Status| |PyPI license| |PyPI pyversions|
 
 
 .. image:: https://raw.githubusercontent.com/daviskirk/climatecontrol/logo/climatecontrol-text.svg?sanitize=true
@@ -7,6 +7,19 @@
 CLIMATECONTROL controls your applications settings and configuration
 environment. It is a Python library for loading app configurations from files
 and/or namespaced environment variables.
+
+Features
+--------
+
+* Separation of settings and code
+* Loading from files (`.yaml`, `.json`, `.toml`)
+* Loading multiple files using glob syntax
+* Loading from environment variables, including loading of nested values
+* Freely reference nested configurations via files or environment variables
+* CLI integration
+* Validation using the Validation library of your choice
+* Logging configuration integration
+* Testing integration
 
 
 Install
@@ -88,37 +101,6 @@ settings. For this situation we can delimit sections using a double underscore:
    }
 
 
-Finally if you decide that your settings are simpler and you know that your
-section names do not have underscores, you can use the ``implicit_depth``
-option, which allows you to add a new section at every single underscore (up to
-the depth you specify).
-
-.. code:: sh
-
-   export MY_APP_SECTION1_VALUE1=test1
-   export MY_APP_SECTION2_VALUE2=test2
-   export MY_APP_SECTION2_VALUE3=test3
-   export MY_APP_SECTION2_SUBSECTION_VALUE4=test4
-
-.. code:: python
-
-   settings_map = Settings(prefix='MY_APP', implicit_depth=2)
-   print(dict(settings_map))
-
-   {
-       'section1': {
-           'value1': 'test1'
-       },
-       'section2': {
-           'value2': 'test2',
-           'value3': 'test3',
-           'subsection': {
-               'value4': 'test4'
-           }
-       }
-   }
-
-
 Settings file support
 ---------------------
 
@@ -163,8 +145,11 @@ In the following documentation examples, yaml files will be used, but any
 examples will work using the other file syntaxes as well.
 
 
-Setting variables whos values are saved in files
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Advanced Features
+-----------------
+
+Setting variables from values saved in files
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Sometimes we don't want to save values in plain text in environment files or in
 the settings file itself. Instead we have a file that contains the value of the
@@ -189,6 +174,33 @@ or using an environment variable:
 
 will both write the content of the file at `"/home/myuser/supersecret.txt"`
 into the variable `section1 -> subsection1`.
+
+
+Setting variables from values saved in specific environment variables
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Similarly, to read a value from an environment variable, add a `"_from_env"` to
+the variable name. For example if we wanted to obtain a value from the variable
+`SPECIFIC_ENV_VAR`:
+
+.. code-block:: sh
+
+   export SPECIFIC_ENV_VAR="some value"
+
+Using a settings file with the contents (in this case yaml):
+
+.. code-block:: yaml
+
+   section1:
+     subsection1_from_env: SPECIFIC_ENV_VAR
+
+or using an environment variable:
+
+.. code-block:: sh
+
+   export MY_APP_SECTION1_SUBSECTION1_FROM_FILE="/home/myuser/supersecret.txt"
+
+will both write "some value" into the variable `section1 -> subsection1`.
 
 
 Nested settings files
@@ -227,10 +239,11 @@ which would result in a settings structure:
    }
 
 
-
+Integrations
+------------
 
 Command line support using click
---------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The click_ library is a great tool for creating command line applications. If
 you don't want to have to use an environment to set your configuration file.
@@ -263,6 +276,32 @@ with the last file overriting any overlapping keys of the first file.
    python cli.py --settings ./my_settings_file.toml  --settings ./my_settings_file.yaml
 
 
+Logging
+^^^^^^^
+
+If you have a "logging" section in your settings files, you can configure
+python standard library logging using that section directly:
+
+.. code:: yml
+
+   logging:
+     formatters:
+       default:
+         format': "%(levelname)s > %(message)s"
+     root:
+       level: DEBUG
+
+
+.. code:: python
+
+   import logging
+
+   settings_map = Settings(prefix='MY_APP')
+   settings_map.setup_logging()
+   logging.debug('test')
+   # outputs: DEBUG > test
+
+
 Testing
 -------
 
@@ -284,12 +323,6 @@ temporarily:
        print(settings_map['a'])  # outputs: 2
    # After the context exits the settings map
    print(settings_map['a'])  # outputs: 1
-
-
-Python version support
-----------------------
-
-Do to the use of modern python features, only python 3.5 and above are supported.
 
 
 .. |Build Status| image:: https://travis-ci.org/daviskirk/climatecontrol.svg?branch=master
