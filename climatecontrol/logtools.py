@@ -11,22 +11,17 @@ logger = logging.getLogger(__name__)  # type: logging.Logger
 
 
 DEFAULT_LOG_SETTINGS = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'default': {
-            'format': '%(asctime)s UTC [%(levelname)s] %(name)s: %(message)s'
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "default": {"format": "%(asctime)s UTC [%(levelname)s] %(name)s: %(message)s"}
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "default",
+            "level": "DEBUG",
         }
     },
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'default',
-            'level': 'DEBUG'
-        }
-    },
-    'root': {
-        'level': 'INFO',
-        'handlers': ['console']
-    }
+    "root": {"level": "INFO", "handlers": ["console"]},
 }

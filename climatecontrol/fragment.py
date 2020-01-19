@@ -23,7 +23,7 @@ class FragmentPath(Sequence):
         return self._data[index]
 
     def __repr__(self) -> str:
-        return '{}({})'.format(type(self).__qualname__, repr(self._data))
+        return "{}({})".format(type(self).__qualname__, repr(self._data))
 
     def __eq__(self, other) -> bool:
         return type(self) == type(other) and self._data == other._data
@@ -59,7 +59,7 @@ class FragmentPath(Sequence):
 
         return new_value
 
-    def common(self, other: Sequence) -> 'FragmentPath':
+    def common(self, other: Sequence) -> "FragmentPath":
         """Given a second path, return the part of the sequence up to the point where they first differ."""
         common_path = []
         other_path = type(self)(other)  # type: FragmentPath
@@ -78,16 +78,14 @@ class FragmentPath(Sequence):
 class Fragment:
     """Data fragment for storing a value and metadata related to it."""
 
-    def __init__(self, value: Any,
-                 source: str = '',
-                 path: Sequence = ()) -> None:
+    def __init__(self, value: Any, source: str = "", path: Sequence = ()) -> None:
         """Initialize fragment."""
         self.value = value
         self.source = source
         self.path = FragmentPath(path)
 
     def __repr__(self):
-        return '{}(value={}, source={}, path={})'.format(
+        return "{}(value={}, source={}, path={})".format(
             type(self).__qualname__,
             repr(self.value),
             repr(self.source),
@@ -96,13 +94,13 @@ class Fragment:
 
     def __eq__(self, other):
         return (
-            type(self) == type(other) and
-            self.value == other.value and
-            self.source == other.source and
-            self.path == other.path
+            type(self) == type(other)
+            and self.value == other.value
+            and self.source == other.source
+            and self.path == other.path
         )
 
-    def iter_leaves(self) -> Iterator['Fragment']:
+    def iter_leaves(self) -> Iterator["Fragment"]:
         """Iterate over all leaves of a fragment.
 
         A leaf is obtained by walking through any nested dictionaries until a
@@ -125,7 +123,7 @@ class Fragment:
         """Create expanded dictionary where the fragments path acts as nested keys."""
         return self.path.expand(self.value)
 
-    def merge(self, other: 'Fragment') -> 'Fragment':
+    def merge(self, other: "Fragment") -> "Fragment":
         """Merge with another fragment."""
         expanded_value = self.expand_value_with_path()
         other_expanded_value = other.expand_value_with_path()
@@ -133,16 +131,12 @@ class Fragment:
 
         new_path = self.path.common(other.path)
         new_value = get_nested(merged_value, new_path)
-        new_source = ', '.join(str(s) for s in [self.source, other.source] if s)
+        new_source = ", ".join(str(s) for s in [self.source, other.source] if s)
 
         return self.clone(value=new_value, source=new_source, path=new_path)
 
     def clone(self, **kwargs):
         """Clone fragment but using ``kwargs`` as alternative constructor arguments."""
-        defaults = {
-            'value': self.value,
-            'source': self.source,
-            'path': self.path,
-        }
+        defaults = {"value": self.value, "source": self.source, "path": self.path}
         updated_kwargs = {**defaults, **kwargs}
         return type(self)(**updated_kwargs)

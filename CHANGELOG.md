@@ -15,7 +15,7 @@
 
 - Use fragments as base data structure for building settings map
 - Add python 3.7 and 3.8 to CI and update development environment config to 3.8
-
+- Format using [black](https://github.com/psf/black)
 
 ## [0.7.3] - 2019-01-17
 

@@ -4,8 +4,12 @@ import click
 from . import settings_parser
 
 
-def click_settings_file_option(settings_obj: settings_parser.Settings,
-                               click_obj=click, option_name='settings', **kw):
+def click_settings_file_option(
+    settings_obj: settings_parser.Settings,
+    click_obj=click,
+    option_name="settings",
+    **kw
+):
     """Build a `click` option decorator.
 
     Args:
@@ -37,13 +41,14 @@ def click_settings_file_option(settings_obj: settings_parser.Settings,
         object which can then be used in the script.
 
     """
+
     def validate(ctx, param, value):
         if value:
             settings_obj.settings_files = value
             settings_obj.update()
 
     option_kwargs = dict(
-        help='Settings file path for loading settings from file.',
+        help="Settings file path for loading settings from file.",
         callback=validate,
         type=click.Path(exists=True, dir_okay=False, resolve_path=True),
         expose_value=False,
@@ -52,8 +57,6 @@ def click_settings_file_option(settings_obj: settings_parser.Settings,
     )
     option_kwargs.update(kw)
     option = click_obj.option(
-        '--{}'.format(option_name),
-        '-{}'.format(option_name[0]),
-        **option_kwargs
+        "--{}".format(option_name), "-{}".format(option_name[0]), **option_kwargs
     )
     return option

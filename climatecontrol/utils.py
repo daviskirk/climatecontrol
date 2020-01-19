@@ -71,15 +71,13 @@ def parse_as_json_if_possible(v: str) -> Any:
 
 
 def int_if_digit(s: str):
-    """Iterpret as integer if `s` represents a digit string."""    
+    """Iterpret as integer if `s` represents a digit string."""
     try:
         if s.isdigit():
             return int(s)
     except AttributeError:
         pass
     return s
-
-    
 
 
 class _Empty(Enum):
@@ -88,7 +86,7 @@ class _Empty(Enum):
     EMPTY = None
 
     def __repr__(self):
-        return '<EMPTY>'  # pragma: nocover
+        return "<EMPTY>"  # pragma: nocover
 
 
 EMPTY = _Empty.EMPTY

@@ -11,7 +11,7 @@ from .utils import parse_as_json_if_possible, int_if_digit
 
 logger = logging.getLogger(__name__)
 
-EnvSetting = NamedTuple('EnvSetting', [('name', str), ('value', Fragment)])
+EnvSetting = NamedTuple("EnvSetting", [("name", str), ("value", Fragment)])
 
 
 class EnvParser:
@@ -58,18 +58,22 @@ class EnvParser:
 
     """
 
-    def __init__(self,
-                 prefix: str = 'CLIMATECONTROL',
-                 split_char: str = '_',
-                 implicit_depth: int = 0,
-                 settings_file_suffix: str = 'SETTINGS_FILE',
-                 exclude: Iterable[str] = ()) -> None:
+    def __init__(
+        self,
+        prefix: str = "CLIMATECONTROL",
+        split_char: str = "_",
+        implicit_depth: int = 0,
+        settings_file_suffix: str = "SETTINGS_FILE",
+        exclude: Iterable[str] = (),
+    ) -> None:
         """Initialize object."""
         self.settings_file_suffix = str(settings_file_suffix)
         self.implicit_depth = int(implicit_depth)
         if implicit_depth != 0:
-            warnings.warn('Setting "implicit_depth" is deprecated and will be removed in a future version',
-                          DeprecationWarning)
+            warnings.warn(
+                'Setting "implicit_depth" is deprecated and will be removed in a future version',
+                DeprecationWarning,
+            )
         self.split_char = split_char
         self.prefix = prefix
         self.exclude = exclude  # type: ignore
@@ -103,7 +107,9 @@ class EnvParser:
     @settings_file_env_var.setter
     def settings_file_env_var(self, value: str):
         """Set environment variable used to indicate a path to a settings file."""
-        raise AttributeError('Can\'t set `settings_file_env_var` directly. Set `settings_file_suffix` instead.')
+        raise AttributeError(
+            "Can't set `settings_file_env_var` directly. Set `settings_file_suffix` instead."
+        )
 
     @property
     def split_char(self) -> str:
@@ -115,10 +121,12 @@ class EnvParser:
         """Set character used to split sections."""
         char = str(char)
         if len(char) != 1:
-            raise ValueError('``split_char`` must be a single character')
+            raise ValueError("``split_char`` must be a single character")
         self._split_char = str(char)
 
-    def iter_load(self, include_vars=True, include_file: bool = True) -> Iterator[Fragment]:
+    def iter_load(
+        self, include_vars=True, include_file: bool = True
+    ) -> Iterator[Fragment]:
         """Convert environment variables to nested dict.
 
         Note that all string inputs are case insensitive and all resulting keys
@@ -146,11 +154,13 @@ class EnvParser:
 
         """
         if include_file:
-            settings_file_str = os.getenv(self.settings_file_env_var, '')
-            settings_files = [s.strip() for s in settings_file_str.split(',')]
+            settings_file_str = os.getenv(self.settings_file_env_var, "")
+            settings_files = [s.strip() for s in settings_file_str.split(",")]
             for settings_file in settings_files:
                 for fragment in file_loaders.iter_load(settings_file):
-                    fragment.source = 'ENV:' + str(self.settings_file_env_var) + ':' + fragment.source
+                    fragment.source = (
+                        "ENV:" + str(self.settings_file_env_var) + ":" + fragment.source
+                    )
                     yield fragment
         if include_vars:
             for env_var, env_var_value in os.environ.items():
@@ -158,7 +168,9 @@ class EnvParser:
                 if not nested_keys:
                     continue
                 value = parse_as_json_if_possible(env_var_value)
-                fragment = Fragment(value=value, path=nested_keys, source='ENV:' + env_var)
+                fragment = Fragment(
+                    value=value, path=nested_keys, source="ENV:" + env_var
+                )
                 yield fragment
 
     def _build_env_var(self, *parts: str) -> str:
@@ -172,9 +184,11 @@ class EnvParser:
 
         """
         env_var_low = env_var.lower()
-        if env_var_low in self.exclude or not env_var_low.startswith(self.prefix.lower()):
+        if env_var_low in self.exclude or not env_var_low.startswith(
+            self.prefix.lower()
+        ):
             return
-        body = env_var_low[len(self.prefix):]
+        body = env_var_low[len(self.prefix) :]
         sections = body.split(self.split_char * 2)
         for i_section, section in enumerate(sections):
             if self.implicit_depth > 0 and i_section == 0:
@@ -186,7 +200,7 @@ class EnvParser:
 
     def _strip_split_char(self, s):
         if s.startswith(self.split_char):
-            s = s[len(self.split_char):]
+            s = s[len(self.split_char) :]
         elif s.endswith(self.split_char):
-            s = s[:-len(self.split_char)]
+            s = s[: -len(self.split_char)]
         return s

@@ -53,7 +53,7 @@ def iter_load(path_or_content: str) -> Iterator[Fragment]:
         return
 
     # assume content if no files were found
-    yield Fragment(value=load_from_content(path_or_content), source='content')
+    yield Fragment(value=load_from_content(path_or_content), source="content")
 
 
 def load_from_content(content: str) -> Dict[str, Any]:
@@ -67,8 +67,9 @@ def load_from_content(content: str) -> Dict[str, Any]:
             break
     else:
         raise NoCompatibleLoaderFoundError(
-            'Failed to load settings from content. No compatible loader: {}'
-            .format(content)
+            "Failed to load settings from content. No compatible loader: {}".format(
+                content
+            )
         )
     return file_data
 
@@ -95,8 +96,8 @@ def load_from_filepath(filepath: str) -> Dict[str, Any]:
             break
     else:
         raise NoCompatibleLoaderFoundError(
-            'Failed to load settings from filepath. '
-            'No compatible loader for file: {}'.format(filepath)
+            "Failed to load settings from filepath. "
+            "No compatible loader for file: {}".format(filepath)
         )
     return file_data
 
@@ -126,7 +127,9 @@ class FileLoader(ABC):
     @classmethod
     def is_content(cls, path_or_content):
         """Check if argument is file content."""
-        return any(path_or_content.lstrip().startswith(s) for s in cls.valid_content_start)
+        return any(
+            path_or_content.lstrip().startswith(s) for s in cls.valid_content_start
+        )
 
     @classmethod
     def is_path(cls, path_or_content: str):
@@ -135,9 +138,8 @@ class FileLoader(ABC):
         If `only_existing` is set to ``True``, paths to files that don't exist
         will also return ``False``.
         """
-        return (
-            len(str(path_or_content).strip().splitlines()) == 1 and
-            (os.path.splitext(path_or_content)[1] in cls.valid_file_extensions)
+        return len(str(path_or_content).strip().splitlines()) == 1 and (
+            os.path.splitext(path_or_content)[1] in cls.valid_file_extensions
         )
 
     @classmethod
@@ -151,8 +153,8 @@ class FileLoader(ABC):
 class JsonLoader(FileLoader):
     """FileLoader for .json files."""
 
-    valid_file_extensions = ('.json',)
-    valid_content_start = ('{',)
+    valid_file_extensions = (".json",)
+    valid_content_start = ("{",)
 
     @classmethod
     def from_content(cls, content: str) -> Any:
@@ -175,8 +177,8 @@ class JsonLoader(FileLoader):
 class YamlLoader(FileLoader):
     """FileLoader for .yaml files."""
 
-    valid_file_extensions = ('.yml', '.yaml')
-    valid_content_start = ('---',)
+    valid_file_extensions = (".yml", ".yaml")
+    valid_content_start = ("---",)
 
     @classmethod
     def from_content(cls, content: str) -> Any:
@@ -196,21 +198,23 @@ class YamlLoader(FileLoader):
         """Serialize mapping to string."""
         cls._check_yaml()
         s = yaml.safe_dump(data, default_flow_style=False)
-        s = '---\n' + s
+        s = "---\n" + s
         return s
 
     @staticmethod
     def _check_yaml():
         if yaml is None:
-            raise ImportError('"pyyaml" package needs to be installed to parse yaml files.')
+            raise ImportError(
+                '"pyyaml" package needs to be installed to parse yaml files.'
+            )
 
 
 @FileLoader.register
 class TomlLoader(FileLoader):
     """FileLoader for .toml files."""
 
-    valid_file_extensions = ('.toml', '.ini', '.config', '.cfg')
-    valid_content_start = ('[',)  # TODO: This only works if settings file has sections.
+    valid_file_extensions = (".toml", ".ini", ".config", ".cfg")
+    valid_content_start = ("[",)  # TODO: This only works if settings file has sections.
 
     @classmethod
     def from_content(cls, content: str) -> Any:
@@ -230,10 +234,12 @@ class TomlLoader(FileLoader):
         """Serialize mapping to string."""
         cls._check_toml()
         s = toml.dumps(OrderedDict(sorted(data.items())))
-        s = s.replace('\n[', '\n\n[')
+        s = s.replace("\n[", "\n\n[")
         return s
 
     @staticmethod
     def _check_toml():
         if toml is None:
-            raise ImportError('"toml" package needs to be installed to parse toml files.')
+            raise ImportError(
+                '"toml" package needs to be installed to parse toml files.'
+            )
