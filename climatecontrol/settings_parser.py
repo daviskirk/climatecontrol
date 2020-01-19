@@ -78,7 +78,7 @@ class Settings(Mapping):
         >>> os.environ['MY_APP_SECTION1_SUB1'] = 'test1'
         >>> os.environ['MY_APP_SECTION2_SUB2'] = 'test2'
         >>> os.environ['MY_APP_SECTION2_SUB3'] = 'test3'
-        >>> settings_manager = SettingsManager(prefix='MY_APP')
+        >>> settings_manager = Settings(prefix='MY_APP')
         >>> dict(settings_manager)
         {'value0': 'test0', 'section1': {'subsection1': 'test1'}, 'section2': {'sub2': 'test2', 'sub3': 'test3'}}
 
