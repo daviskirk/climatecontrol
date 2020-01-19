@@ -3,6 +3,7 @@
 """Setup climatecontrol."""
 
 import os
+
 from setuptools import setup
 
 requirements: list = []

@@ -1,9 +1,10 @@
 """Tests for fragments."""
 
-import pytest
 import sys
 
-from climatecontrol.fragment import Fragment, FragmentPath, EMPTY, merge_nested
+import pytest
+
+from climatecontrol.fragment import EMPTY, Fragment, FragmentPath, merge_nested
 
 
 def test_fragment_path():

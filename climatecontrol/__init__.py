@@ -10,5 +10,4 @@ namespaced environment variables.
 from .exceptions import SettingsLoadError, SettingsValidationError
 from .settings_parser import Settings
 
-
 __all__ = ["Settings", "SettingsValidationError", "SettingsLoadError"]

@@ -7,11 +7,11 @@ from collections.abc import Mapping
 from unittest.mock import MagicMock
 
 import click
-from click.testing import CliRunner
 import pytest
 import toml
+from click.testing import CliRunner
 
-from climatecontrol import settings_parser, cli_utils  # noqa: E402
+from climatecontrol import cli_utils, settings_parser  # noqa: E402
 from climatecontrol.exceptions import NoCompatibleLoaderFoundError
 from climatecontrol.fragment import Fragment
 

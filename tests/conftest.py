@@ -1,16 +1,18 @@
 """Test settings."""
-from collections import OrderedDict
 import itertools
-import sys
-import os
-import pytest
 import json
+import os
+import sys
+from collections import OrderedDict
 from textwrap import dedent
+
+import pytest
 import toml
 import yaml
 
+from climatecontrol import settings_parser
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from climatecontrol import settings_parser  # noqa: E402
 
 
 @pytest.fixture

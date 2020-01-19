@@ -1,9 +1,9 @@
 """Logging utilities."""
 
 import logging
+import logging.config as logging_config
 import time
 from typing import Any
-import logging.config as logging_config
 
 formatter: Any = logging.Formatter
 formatter.converter = time.gmtime

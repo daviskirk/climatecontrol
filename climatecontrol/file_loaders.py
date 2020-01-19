@@ -5,8 +5,7 @@ import json
 import os
 from abc import ABC, abstractmethod
 from collections import OrderedDict
-from typing import Tuple, Iterator, List  # noqa: F401
-from typing import Any, Dict, Mapping
+from typing import Any, Dict, Iterator, List, Mapping, Tuple
 
 from .exceptions import NoCompatibleLoaderFoundError
 from .fragment import Fragment

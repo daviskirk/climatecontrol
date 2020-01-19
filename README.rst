@@ -1,4 +1,5 @@
 |Build Status| |Coverage Status| |PyPi Status| |PyPI license| |PyPI pyversions|
+|Code Style Black|
 
 
 .. image:: https://raw.githubusercontent.com/daviskirk/climatecontrol/logo/climatecontrol-text.svg?sanitize=true
@@ -335,6 +336,8 @@ temporarily:
    :target: https://pypi.python.org/pypi/ansicolortags/
 .. |PyPI pyversions| image:: https://img.shields.io/pypi/pyversions/climatecontrol.svg
    :target: https://pypi.python.org/pypi/climatecontrol/
+.. |Code Style Black| image:: https://img.shields.io/badge/code%20style-black-000000.svg
+   :target: https://github.com/psf/black
 .. _click: http://click.pocoo.org/
 .. _toml: https://github.com/toml-lang/toml
 .. _secrets: https://docs.docker.com/engine/swarm/secrets
