@@ -43,7 +43,7 @@ def merge_nested(d: Any, u: Any) -> Any:
 
     """
     if isinstance(d, Mapping):
-        new_dict = dict(**d)  # type: dict
+        new_dict: dict = dict(**d)
         if not isinstance(u, Mapping):
             return deepcopy(u)
         for k, u_v in u.items():

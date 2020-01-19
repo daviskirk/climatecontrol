@@ -46,7 +46,7 @@ def iter_load(path_or_content: str) -> Iterator[Fragment]:
     if not path_or_content:
         return
     expanded_path_or_content = os.path.expanduser(os.path.expandvars(path_or_content))
-    globbed_files = glob.glob(expanded_path_or_content)  # type: List[str]
+    globbed_files: List[str] = glob.glob(expanded_path_or_content)
     if globbed_files:
         for filepath in sorted(globbed_files):
             yield Fragment(value=load_from_filepath(filepath), source=filepath)
@@ -58,7 +58,7 @@ def iter_load(path_or_content: str) -> Iterator[Fragment]:
 
 def load_from_content(content: str) -> Dict[str, Any]:
     """Read settings from a content string."""
-    file_data = {}  # type: Dict
+    file_data: Dict[str, Any] = {}
     if not content:
         return file_data
     for loader in FileLoader.registered_loaders:
@@ -87,7 +87,7 @@ def load_from_filepath(filepath: str) -> Dict[str, Any]:
             this filepath or content type.
 
     """
-    file_data = {}  # type: Dict
+    file_data: dict = {}
     if not filepath:
         return file_data
     for loader in FileLoader.registered_loaders:
@@ -105,9 +105,9 @@ def load_from_filepath(filepath: str) -> Dict[str, Any]:
 class FileLoader(ABC):
     """Abstract base class for file/file content loading."""
 
-    valid_file_extensions = ()  # type: Tuple[str, ...]
-    valid_content_start = ()  # type: Tuple
-    registered_loaders = []  # type: List[FileLoader]
+    valid_file_extensions: Tuple[str, ...] = ()
+    valid_content_start: Tuple = ()
+    registered_loaders: List["FileLoader"] = []
 
     @classmethod
     @abstractmethod

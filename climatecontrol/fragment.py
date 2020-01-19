@@ -11,7 +11,7 @@ class FragmentPath(Sequence):
 
     def __init__(self, iterable: Iterable = ()) -> None:
         """Assign initial iterable data."""
-        self._data = list(iterable)  # type: list
+        self._data: list = list(iterable)
 
     def __len__(self) -> int:
         return len(self._data)
@@ -42,7 +42,7 @@ class FragmentPath(Sequence):
         if not self._data:
             return value
         if self._data and self._is_list_index(self._data[0]):
-            new_value = [EMPTY] * (self._data[0] + 1)  # type: Union[dict, list]
+            new_value: Union[dict, list] = [EMPTY] * (self._data[0] + 1)
         else:
             new_value = {}
         sub_value = new_value
@@ -62,7 +62,7 @@ class FragmentPath(Sequence):
     def common(self, other: Sequence) -> "FragmentPath":
         """Given a second path, return the part of the sequence up to the point where they first differ."""
         common_path = []
-        other_path = type(self)(other)  # type: FragmentPath
+        other_path: FragmentPath = type(self)(other)
         for subpath, subpath_other in zip(self._data, other_path):
             if subpath == subpath_other:
                 common_path.append(subpath)
@@ -108,7 +108,7 @@ class Fragment:
 
         """
         if isinstance(self.value, Mapping):
-            items = self.value.items()  # type: Iterable[tuple]
+            items: Iterable[tuple] = self.value.items()
         elif isinstance(self.value, Sequence) and not isinstance(self.value, str):
             items = enumerate(self.value)
         else:

@@ -17,6 +17,11 @@
 - Add python 3.7 and 3.8 to CI and update development environment config to 3.8
 - Format using [black](https://github.com/psf/black)
 
+### Removed
+
+- Remove python 3.5 support 
+
+
 ## [0.7.3] - 2019-01-17
 
 ### Fixed
