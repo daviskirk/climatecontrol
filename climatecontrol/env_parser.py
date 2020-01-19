@@ -7,7 +7,7 @@ from typing import Iterable, Iterator, NamedTuple, Tuple
 
 from . import file_loaders
 from .fragment import Fragment
-from .utils import parse_as_json_if_possible
+from .utils import parse_as_json_if_possible, int_if_digit
 
 logger = logging.getLogger(__name__)
 
@@ -180,9 +180,9 @@ class EnvParser:
             if self.implicit_depth > 0 and i_section == 0:
                 for s in section.split(self.split_char, self.implicit_depth):
                     if s:
-                        yield s
+                        yield int_if_digit(s)
             elif section:
-                yield section
+                yield int_if_digit(section)
 
     def _strip_split_char(self, s):
         if s.startswith(self.split_char):

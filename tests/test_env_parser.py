@@ -50,7 +50,7 @@ def test_envparser_assign(mock_empty_os_environ, attr, value, expected):
     ]),
     ('TEST_STUFFING', 1, '_', []),
 ])
-def test_envparser_iter_load(mock_os_environ, prefix, implicit_depth, split_char, expected_kws):
+def test_envparser_args_iter_load(mock_os_environ, prefix, implicit_depth, split_char, expected_kws):
     """Check that we can parse settings from variables."""
     env_parser = EnvParser(
         prefix=prefix,
@@ -62,7 +62,7 @@ def test_envparser_iter_load(mock_os_environ, prefix, implicit_depth, split_char
 
 
 @pytest.mark.parametrize('environ, expected_kw', [
-    (
+    pytest.param(
         {
             'TEST_STUFF_TESTGROUP__TEST_INT': '6',
             'TEST_STUFF_TESTGROUP__TEST_ARRAY': '[4, 5, 6]',
@@ -76,11 +76,30 @@ def test_envparser_iter_load(mock_os_environ, prefix, implicit_depth, split_char
             {'value': 'al//asdjk', 'source': 'ENV:TEST_STUFF_TESTGROUP__TEST_RAW_STR', 'path': ['testgroup', 'test_raw_str']},  # noqa: E501
             {'value': '[4, 5, 6]', 'source': 'ENV:TEST_STUFF_TESTGROUP__TEST_STR', 'path': ['testgroup', 'test_str']},
             {'value': 'amqp://guest:guest@127.0.0.1:5672//', 'source': 'ENV:TEST_STUFF_TESTGROUP__TEST_COMPLEX_RAW_STR', 'path': ['testgroup', 'test_complex_raw_str']},  # noqa: E501
-        ]
+        ],
+        id='json value'
+    ),
+    pytest.param(
+        {
+            'TEST_STUFF_TESTLIST__5': "v1"
+        },
+        [
+            {'value': 'v1', 'source': 'ENV:TEST_STUFF_TESTLIST__5', 'path': ['testlist', 5]},
+        ],
+        id='list index variable'
+    ),
+    pytest.param(
+        {
+            'TEST_STUFF_TESTLIST__1__TEST': "v1"
+        },
+        [
+            {'value': 'v1', 'source': 'ENV:TEST_STUFF_TESTLIST__1__TEST', 'path': ['testlist', 1, 'test']},
+        ],
+        id='list index with dict variable'
     ),
 ])
-def test_parse_json(monkeypatch, environ, expected_kw):
-    """Check that we can parse toml from environment variables."""
+def test_env_parser_iter_load(monkeypatch, environ, expected_kw):
+    """Check that iter_load correctly interprets environment variables and their values."""
     monkeypatch.setattr(os, 'environ', environ)
     env_parser = EnvParser(prefix='TEST_STUFF')
     expected = [Fragment(**kw) for kw in expected_kw]

@@ -9,6 +9,7 @@
 - Add "update_log" property which specifies a log of all variables loaded or
   removed/replaced.
 - Allow overwriting / merging lists
+- Allow environment variables to target list indexes (`CLIMATECONTROL_SECTION__0__VALUE=testvalue`)
 
 ### Changed
 
