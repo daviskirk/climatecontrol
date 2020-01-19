@@ -1,13 +1,13 @@
 """Logging utilities."""
 
 import logging
-import logging.config as logging_config  # noqa: F401
 import time
-from typing import cast, Optional, Dict, Any  # noqa: F401
+from typing import Any
+import logging.config as logging_config
 
-formatter = logging.Formatter  # type: Any
+formatter: Any = logging.Formatter
 formatter.converter = time.gmtime
-logger = logging.getLogger(__name__)  # type: logging.Logger
+logger: logging.Logger = logging.getLogger(__name__)
 
 
 DEFAULT_LOG_SETTINGS = {
@@ -25,3 +25,6 @@ DEFAULT_LOG_SETTINGS = {
     },
     "root": {"level": "INFO", "handlers": ["console"]},
 }
+
+
+__ALL__ = [DEFAULT_LOG_SETTINGS, logging, logger, logging_config]

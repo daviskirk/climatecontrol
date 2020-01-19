@@ -1,12 +1,12 @@
 language: python
 python:
-  - 3.5
   - 3.6
   - 3.7
   - 3.8
 install:
-  - pip install coveralls mypy==0.750 flake8==3.7.9 flake8-docstrings==1.5.0
+  - pip install coveralls mypy==0.750 flake8==3.7.9 flake8-docstrings==1.5.0 black
 script:
+  - black --check .
   - flake8
   - mypy climatecontrol
   - pip install "pytest" && python setup.py test

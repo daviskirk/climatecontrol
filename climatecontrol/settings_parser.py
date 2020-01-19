@@ -98,10 +98,10 @@ class Settings(Mapping):
         self.env_parser = EnvParser(**(env_parser_kwargs or {}))
         self.parser = parser
         self.settings_files = settings_files
-        self.update_data = {}  # type: dict
-        self.fragments = []  # type: List[Fragment]
-        self._data = {}  # type: Mapping
-        self._initialized = False  # type: bool
+        self.update_data: dict = {}
+        self.fragments: List[Fragment] = []
+        self._data: Mapping = {}
+        self._initialized: bool = False
 
         if update_on_init is not None:
             warnings.warn("setting update_on_init is deprecated", DeprecationWarning)
@@ -208,7 +208,7 @@ class Settings(Mapping):
             fragments.extend(self.process_fragment(fragment))
 
         # Combine the fragments into one final fragment
-        combined_fragment = None  # type: Optional[Fragment]
+        combined_fragment: Optional[Fragment] = None
         for fragment in fragments:
             if combined_fragment is None:
                 combined_fragment = fragment
@@ -217,7 +217,7 @@ class Settings(Mapping):
 
         # Obtain settings map
         if combined_fragment is None:
-            settings_map = {}  # type: dict
+            settings_map: dict = {}
         else:
             settings_map = combined_fragment.expand_value_with_path()
             clean_removed_items(settings_map)
@@ -266,10 +266,10 @@ class Settings(Mapping):
 
     def process_fragment(self, fragment: Fragment) -> Iterator[Fragment]:
         """Preprocess a settings fragment and return the new version."""
-        processors = [
+        processors: List[Callable[[Fragment], Iterator[Fragment]]] = [
             replace_from_file_vars,
             replace_from_env_vars,
-        ]  # type: List[Callable[[Fragment], Iterator[Fragment]]]
+        ]
         for process in processors:
             for new_fragment in process(fragment):
                 yield new_fragment
@@ -394,7 +394,7 @@ def replace_from_file_vars(
             yield leaf.clone(value=REMOVED)
             try:
                 try:
-                    new_value = load_from_filepath(filepath)  # type: Any
+                    new_value: Any = load_from_filepath(filepath)
                 except NoCompatibleLoaderFoundError:
                     # just load as plain text file and interpret as string
                     with open(filepath) as f:
@@ -413,7 +413,7 @@ def replace_from_file_vars(
 def clean_removed_items(obj):
     """Remove all keys that contain a removed key indicated by a :data:``REMOVED`` object."""
     if isinstance(obj, MutableMapping):
-        items = obj.items()  # type: Any
+        items: Any = obj.items()
     elif isinstance(obj, MutableSequence):
         items = enumerate(obj)
     else:

@@ -5,7 +5,7 @@
 import os
 from setuptools import setup
 
-requirements = []  # type: list
+requirements: list = []
 
 test_requirements = [
     "pytest",
