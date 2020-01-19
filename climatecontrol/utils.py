@@ -1,8 +1,8 @@
 """Utility functions."""
 
+import json
 from copy import deepcopy
 from enum import Enum
-import json
 from itertools import zip_longest
 from typing import Any, Mapping, Sequence, Union
 
@@ -20,8 +20,13 @@ def get_nested(obj: Union[Mapping, Sequence], path: Sequence) -> Any:
 
     """
     result = obj
+    traversed = []
     for subpath in path:
-        result = result[subpath]
+        traversed.append(subpath)
+        try:
+            result = result[subpath]
+        except (KeyError, IndexError, TypeError) as e:
+            raise type(e)(str(e.args[0]) + "at nested path: {}".format(traversed))
     return result
 
 
@@ -49,8 +54,7 @@ def merge_nested(d: Any, u: Any) -> Any:
             return deepcopy(u)
         new_list = [
             merge_nested(d_item, u_item) if u_item is not EMPTY else d_item
-            for d_item, u_item
-            in zip_longest(d, u, fillvalue=EMPTY)
+            for d_item, u_item in zip_longest(d, u, fillvalue=EMPTY)
         ]
         return new_list
     return deepcopy(u)
@@ -66,13 +70,23 @@ def parse_as_json_if_possible(v: str) -> Any:
     return v
 
 
+def int_if_digit(s: str):
+    """Iterpret as integer if `s` represents a digit string."""
+    try:
+        if s.isdigit():
+            return int(s)
+    except AttributeError:
+        pass
+    return s
+
+
 class _Empty(Enum):
     """Object representing an empty item."""
 
     EMPTY = None
 
     def __repr__(self):
-        return '<EMPTY>'  # pragma: nocover
+        return "<EMPTY>"  # pragma: nocover
 
 
 EMPTY = _Empty.EMPTY

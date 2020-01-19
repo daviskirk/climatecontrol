@@ -9,12 +9,13 @@
 - Add "update_log" property which specifies a log of all variables loaded or
   removed/replaced.
 - Allow overwriting / merging lists
+- Allow environment variables to target list indexes (`CLIMATECONTROL_SECTION__0__VALUE=testvalue`)
 
 ### Changed
 
 - Use fragments as base data structure for building settings map
 - Add python 3.7 and 3.8 to CI and update development environment config to 3.8
-
+- Format using [black](https://github.com/psf/black)
 
 ## [0.7.3] - 2019-01-17
 

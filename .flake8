@@ -1,3 +1,4 @@
 [flake8]
-ignore = W391,D105,W503,W504
-max-line-length = 120
+# D202 No blank lines allowed after function docstring: not compatible with black
+ignore = E203, E501, W503, W503, D105, D202
+max-line-length = 88
