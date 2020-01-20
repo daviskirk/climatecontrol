@@ -46,5 +46,8 @@ setup(
         "Programming Language :: Python :: 3.8",
     ],
     setup_requires=["pytest-runner", "setuptools_scm"],
+    extras_require={
+        "dev": ["invoke", "black", "mypy", "isort", "flake8"] + test_requirements
+    },
     tests_require=test_requirements,
 )
