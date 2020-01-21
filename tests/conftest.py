@@ -2,7 +2,6 @@
 import itertools
 import json
 import os
-import sys
 from collections import OrderedDict
 from textwrap import dedent
 
@@ -11,8 +10,6 @@ import toml
 import yaml
 
 from climatecontrol import settings_parser
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
 @pytest.fixture
@@ -34,7 +31,7 @@ def mock_os_environ(monkeypatch):
 @pytest.fixture
 def mock_empty_os_environ(monkeypatch):
     """Mock os environment so it seems completely empty."""
-    mock_environ = {}
+    mock_environ: dict = {}
     monkeypatch.setattr(os, "environ", mock_environ)
 
 
