@@ -10,7 +10,7 @@ environment. It is a Python library for loading app configurations from files
 and/or namespaced environment variables.
 
 Features
---------
+========
 
 * Separation of settings and code
 * Loading from files (`.yaml`, `.json`, `.toml`)
@@ -24,7 +24,7 @@ Features
 
 
 Install
--------
+=======
 
 ::
 
@@ -33,7 +33,7 @@ Install
 
 
 Usage
------
+=====
 
 Set some environment variables in your shell
 
@@ -324,6 +324,11 @@ temporarily:
        print(settings_map['a'])  # outputs: 2
    # After the context exits the settings map
    print(settings_map['a'])  # outputs: 1
+
+Contributing
+============
+
+See: `CONTRIBUTING.md <./CONTRIBUTING.md>`__
 
 
 .. |Build Status| image:: https://travis-ci.org/daviskirk/climatecontrol.svg?branch=master

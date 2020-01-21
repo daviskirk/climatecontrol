@@ -18,7 +18,7 @@ def format(c):
 
 @task
 def test(c, aliases=["pytest", "bla"]):
-    """Run pytest."""
+    """Run all tests using pytest."""
     _context(c)
     print("")
     print("[running pytest]")
@@ -27,7 +27,7 @@ def test(c, aliases=["pytest", "bla"]):
 
 @task
 def check(c):
-    """Check the code is ok."""
+    """Check the code is ok by running flake8, black, isort and mypy."""
     _context(c)
     print("> check that code is formatted well")
     c.run("black --check .")
@@ -40,7 +40,7 @@ def check(c):
 
 @task(pre=[format, check, test])
 def all(c):
-    """Run all formatting commands, lints and tests."""
+    """Run format, check and test all in one command."""
 
 
 def _context(c):
