@@ -6,11 +6,9 @@ python:
 install:
   - pip install coveralls isort mypy==0.750 flake8==3.7.9 flake8-docstrings==1.5.0 black
 script:
-  - black --check .
-  - isort -c
-  - flake8
-  - mypy climatecontrol
-  - pip install "pytest" && python setup.py test
+  - pip install -e ".[dev]"
+  - invoke check
+  - invoke test
 after_success:
   - coveralls
 deploy:
