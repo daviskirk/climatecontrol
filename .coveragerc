@@ -1,2 +1,7 @@
+[run]
+branch = true
+
 [report]
 show_missing = true
+fail_under = 90
+

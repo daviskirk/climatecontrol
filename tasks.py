@@ -10,10 +10,10 @@ def format(c):
     """Format the code to make it compatible with the `check` command."""
     _context(c)
     print("> sorting imports]")
-    c.run("isort -rc -y", pty=True)
+    c.run("isort -rc -y")
 
     print("> [painting all the code black]")
-    c.run("black .", pty=True)
+    c.run("black .")
 
 
 @task
@@ -22,7 +22,8 @@ def test(c, aliases=["pytest", "bla"]):
     _context(c)
     print("")
     print("[running pytest]")
-    c.run("pytest", pty=True)
+    c.run("coverage run -m pytest")
+    c.run("coverage report")
 
 
 @task
