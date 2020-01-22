@@ -11,7 +11,7 @@ requirements: list = []
 test_requirements = [
     "pytest",
     "pytest-mock",
-    "pytest-cov>=2.5.1",
+    "coverage",
     "toml>=0.9.2",
     "pyyaml",
     "click>=7.0",

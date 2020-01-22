@@ -189,9 +189,9 @@ def test_env_parser_iter_load(monkeypatch, environ, expected_kw):
     env_parser = EnvParser(prefix="TEST_STUFF")
     expected = [Fragment(**kw) for kw in expected_kw]
     result = list(env_parser.iter_load())
-    if sys.version_info[:2] >= (3, 6):
+    if sys.version_info[:2] >= (3, 6):  # pragma: nocover
         assert result == expected
-    else:
+    else:  # pragma: nocover
         # python 3.5 doesn't order dicts so we can't test the exact order
         def to_set(fragments):
             return set(str(f) for f in fragments)

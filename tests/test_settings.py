@@ -311,7 +311,7 @@ def test_settings_multiple_files_and_env(mock_os_environ, mock_settings_files, t
     ]
 
     assert len(settings_map.fragments) == len(expected_fragments)
-    if sys.version_info[:2] >= (3, 6):
+    if sys.version_info[:2] >= (3, 6):  # pragma: nocover
         # in python < 3.6 dicts are not ordered so we can't be sure what's up here in python 3.5
         assert settings_map.fragments == expected_fragments
 
@@ -430,7 +430,6 @@ def test_multiple_settings_files(tmpdir):
 
 def mock_parser_fcn(s):
     """Return input instead of doing some complex parsing."""
-    return s
 
 
 @pytest.mark.parametrize(
