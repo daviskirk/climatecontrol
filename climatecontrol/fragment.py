@@ -1,7 +1,7 @@
 """Module for defining settings fragments."""
 
 from itertools import zip_longest
-from typing import Any, Iterable, Iterator, Mapping, Sequence, Union  # noqa: F401
+from typing import Any, Iterable, Iterator, Mapping, Sequence, Union
 
 from .utils import EMPTY, get_nested, merge_nested
 

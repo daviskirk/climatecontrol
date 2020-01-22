@@ -1,16 +1,13 @@
 """Test settings."""
-from collections import OrderedDict
 import itertools
-import sys
-import os
-import pytest
 import json
+import os
+from collections import OrderedDict
 from textwrap import dedent
+
+import pytest
 import toml
 import yaml
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from climatecontrol import settings_parser  # noqa: E402
 
 
 @pytest.fixture
@@ -32,14 +29,8 @@ def mock_os_environ(monkeypatch):
 @pytest.fixture
 def mock_empty_os_environ(monkeypatch):
     """Mock os environment so it seems completely empty."""
-    mock_environ = {}
+    mock_environ: dict = {}
     monkeypatch.setattr(os, "environ", mock_environ)
-
-
-@pytest.fixture
-def mock_settings_prefix(monkeypatch):
-    """Mock default settings prefix."""
-    monkeypatch.setattr(settings_parser.Settings, "prefix", "TEST_STUFF")
 
 
 @pytest.fixture(
@@ -78,7 +69,7 @@ def mock_settings_file(request, monkeypatch, tmpdir, file_extension):
         p.write("---\n" + yaml.dump(expected_result))
     elif ext == ".json":
         p.write(json.dumps(expected_result))
-    else:
+    else:  # pragma: nocover
         raise NotImplementedError("Invalid file extension :{}.".format(ext))
 
     return str(p), expected_result
@@ -160,7 +151,7 @@ def mock_settings_files(
         {"othergroup": {"blabla": 555, "testvar_inline_2": "bar"}}
         """
         )
-    else:
+    else:  # pragma: nocover
         raise NotImplementedError("Invalid file extension :{}.".format(ext))
     p1 = subdir.join("settings" + ext)
     p1.write(s1)

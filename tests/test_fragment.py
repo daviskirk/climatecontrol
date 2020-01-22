@@ -1,9 +1,10 @@
 """Tests for fragments."""
 
-import pytest
 import sys
 
-from climatecontrol.fragment import Fragment, FragmentPath, EMPTY, merge_nested
+import pytest
+
+from climatecontrol.fragment import EMPTY, Fragment, FragmentPath, merge_nested
 
 
 def test_fragment_path():
@@ -105,9 +106,9 @@ def test_fragment_iter_leaves():
         Fragment(value="test2", path=["c", "d", 1, "f"]),
     ]
 
-    if sys.version_info[:2] >= (3, 6):
+    if sys.version_info[:2] >= (3, 6):  # pragma: nocover
         assert actual == expected
-    else:
+    else:  # pragma: nocover
 
         def to_set(fragment_list):
             return set((item.value, tuple(item.path)) for item in fragment_list)

@@ -1,2 +1,7 @@
+[run]
+branch = true
+source = .
+omit = setup.py,tasks.py
 [report]
 show_missing = true
+fail_under = 95

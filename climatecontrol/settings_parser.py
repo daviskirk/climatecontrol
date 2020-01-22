@@ -1,14 +1,14 @@
 """Settings parser."""
 
-from enum import Enum
 import itertools
 import logging
-import warnings
 import os
+import warnings
 from contextlib import contextmanager
 from copy import deepcopy
+from enum import Enum
 from pprint import pformat
-from typing import (  # noqa: F401
+from typing import (
     Any,
     Callable,
     Dict,
@@ -25,15 +25,7 @@ from typing import (  # noqa: F401
     cast,
 )
 
-try:
-    import click
-except ImportError:
-    click = None  # type: ignore
-
 from .env_parser import EnvParser
-from .exceptions import (  # noqa: F401 # Import here for backwards compatability.
-    SettingsValidationError,
-)
 from .file_loaders import (
     FileLoader,
     NoCompatibleLoaderFoundError,
@@ -43,6 +35,11 @@ from .file_loaders import (
 from .fragment import Fragment
 from .logtools import DEFAULT_LOG_SETTINGS, logging_config
 from .utils import merge_nested, parse_as_json_if_possible
+
+try:
+    import click
+except ImportError:
+    click = None  # type: ignore
 
 
 logger = logging.getLogger(__name__)

@@ -3,6 +3,7 @@
 """Setup climatecontrol."""
 
 import os
+
 from setuptools import setup
 
 requirements: list = []
@@ -10,7 +11,7 @@ requirements: list = []
 test_requirements = [
     "pytest",
     "pytest-mock",
-    "pytest-cov>=2.5.1",
+    "coverage",
     "toml>=0.9.2",
     "pyyaml",
     "click>=7.0",
@@ -39,11 +40,13 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Natural Language :: English",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
     ],
     setup_requires=["pytest-runner", "setuptools_scm"],
+    extras_require={
+        "dev": ["invoke", "black", "mypy", "isort", "flake8"] + test_requirements
+    },
     tests_require=test_requirements,
 )

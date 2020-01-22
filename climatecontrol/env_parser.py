@@ -7,7 +7,7 @@ from typing import Iterable, Iterator, NamedTuple, Tuple
 
 from . import file_loaders
 from .fragment import Fragment
-from .utils import parse_as_json_if_possible, int_if_digit
+from .utils import int_if_digit, parse_as_json_if_possible
 
 logger = logging.getLogger(__name__)
 

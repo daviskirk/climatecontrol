@@ -1,4 +1,5 @@
 |Build Status| |Coverage Status| |PyPi Status| |PyPI license| |PyPI pyversions|
+|Code Style Black|
 
 
 .. image:: https://raw.githubusercontent.com/daviskirk/climatecontrol/logo/climatecontrol-text.svg?sanitize=true
@@ -9,7 +10,7 @@ environment. It is a Python library for loading app configurations from files
 and/or namespaced environment variables.
 
 Features
---------
+========
 
 * Separation of settings and code
 * Loading from files (`.yaml`, `.json`, `.toml`)
@@ -23,7 +24,7 @@ Features
 
 
 Install
--------
+=======
 
 ::
 
@@ -32,7 +33,7 @@ Install
 
 
 Usage
------
+=====
 
 Set some environment variables in your shell
 
@@ -324,6 +325,11 @@ temporarily:
    # After the context exits the settings map
    print(settings_map['a'])  # outputs: 1
 
+Contributing
+============
+
+See: `CONTRIBUTING.md <./CONTRIBUTING.md>`__
+
 
 .. |Build Status| image:: https://travis-ci.org/daviskirk/climatecontrol.svg?branch=master
    :target: https://travis-ci.org/daviskirk/climatecontrol
@@ -335,6 +341,8 @@ temporarily:
    :target: https://pypi.python.org/pypi/ansicolortags/
 .. |PyPI pyversions| image:: https://img.shields.io/pypi/pyversions/climatecontrol.svg
    :target: https://pypi.python.org/pypi/climatecontrol/
+.. |Code Style Black| image:: https://img.shields.io/badge/code%20style-black-000000.svg
+   :target: https://github.com/psf/black
 .. _click: http://click.pocoo.org/
 .. _toml: https://github.com/toml-lang/toml
 .. _secrets: https://docs.docker.com/engine/swarm/secrets
