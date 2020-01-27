@@ -4,9 +4,14 @@
 
 import os
 
-from setuptools import setup
+from setuptools import find_packages, setup
 
-requirements: list = []
+requirements: list = ["wrapt"]
+
+dataclasses_requirements = [
+    "dacite",
+    "dataclasses; python_version < '3.7'",
+]
 
 test_requirements = [
     "pytest",
@@ -15,7 +20,7 @@ test_requirements = [
     "toml>=0.9.2",
     "pyyaml",
     "click>=7.0",
-]
+] + dataclasses_requirements
 
 rootdir = os.path.abspath(os.path.dirname(__file__))
 
@@ -27,8 +32,7 @@ setup(
     author="Davis Kirkendall",
     author_email="davis.e.kirkendall@gmail.com",
     url="https://github.com/daviskirk/climatecontrol",
-    packages=["climatecontrol"],
-    package_dir={"climatecontrol": "climatecontrol"},
+    packages=find_packages(),
     include_package_data=True,
     install_requires=requirements,
     license="MIT",
@@ -46,7 +50,8 @@ setup(
     ],
     setup_requires=["pytest-runner", "setuptools_scm"],
     extras_require={
-        "dev": ["invoke", "black", "mypy", "isort", "flake8"] + test_requirements
+        "dev": ["invoke", "black", "mypy", "isort", "flake8"] + test_requirements,
+        "dataclasses": dataclasses_requirements,
     },
     tests_require=test_requirements,
 )

@@ -4,19 +4,18 @@ import glob
 import json
 import os
 from abc import ABC, abstractmethod
-from collections import OrderedDict
-from typing import Any, Dict, Iterator, List, Mapping, Tuple
+from typing import Any, Dict, Iterator, List, Tuple
 
 from .exceptions import NoCompatibleLoaderFoundError
 from .fragment import Fragment
 
 try:
     import toml
-except ImportError:
+except ImportError:  # pragma: nocover
     toml = None  # type: ignore
 try:
     import yaml
-except ImportError:
+except ImportError:  # pragma: nocover
     yaml = None  # type: ignore
 
 
@@ -119,11 +118,6 @@ class FileLoader(ABC):
         """Load serialized data from content."""
 
     @classmethod
-    @abstractmethod
-    def to_content(cls, data: Mapping) -> str:
-        """Serialize data to string."""
-
-    @classmethod
     def is_content(cls, path_or_content):
         """Check if argument is file content."""
         return any(
@@ -167,7 +161,7 @@ class JsonLoader(FileLoader):
             return json.load(f)
 
     @classmethod
-    def to_content(cls, data: Mapping) -> str:
+    def to_content(cls, data) -> str:
         """Serialize mapping to string."""
         return json.dumps(data, indent=4)
 
@@ -191,14 +185,6 @@ class YamlLoader(FileLoader):
         cls._check_yaml()
         with open(path) as f:
             return yaml.safe_load(f)
-
-    @classmethod
-    def to_content(cls, data: Mapping) -> str:
-        """Serialize mapping to string."""
-        cls._check_yaml()
-        s = yaml.safe_dump(data, default_flow_style=False)
-        s = "---\n" + s
-        return s
 
     @staticmethod
     def _check_yaml():
@@ -227,14 +213,6 @@ class TomlLoader(FileLoader):
         cls._check_toml()
         with open(path) as f:
             return toml.load(f)
-
-    @classmethod
-    def to_content(cls, data: Mapping) -> str:
-        """Serialize mapping to string."""
-        cls._check_toml()
-        s = toml.dumps(OrderedDict(sorted(data.items())))
-        s = s.replace("\n[", "\n\n[")
-        return s
 
     @staticmethod
     def _check_toml():

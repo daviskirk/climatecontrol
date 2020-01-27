@@ -8,6 +8,15 @@ namespaced environment variables.
 """
 
 from .exceptions import SettingsLoadError, SettingsValidationError
-from .settings_parser import Settings
+from .settings_parser import Climate
 
-__all__ = ["Settings", "SettingsValidationError", "SettingsLoadError"]
+climate = Climate()
+Settings = Climate  # for backwards compatability
+
+__all__ = [
+    "climate",
+    "Climate",
+    "Settings",
+    "SettingsValidationError",
+    "SettingsLoadError",
+]

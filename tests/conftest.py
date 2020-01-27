@@ -3,11 +3,24 @@ import itertools
 import json
 import os
 from collections import OrderedDict
+from copy import deepcopy
 from textwrap import dedent
 
 import pytest
 import toml
 import yaml
+
+
+@pytest.fixture(scope="session")
+def original_os_environ():
+    return deepcopy(os.environ)
+
+
+@pytest.fixture(autouse=True)
+def reset_os_environ(original_os_environ):
+    yield
+    os.environ.clear()
+    os.environ.update(original_os_environ)
 
 
 @pytest.fixture

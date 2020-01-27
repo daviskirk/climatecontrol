@@ -39,16 +39,15 @@ Set some environment variables in your shell
 
 .. code:: sh
 
-   export MY_APP_VALUE1=test1
-   export MY_APP_VALUE2=test2
+   export CLIMATECONTROL_VALUE1=test1
+   export CLIMATECONTROL_VALUE2=test2
 
 Then use them in your python modules:
 
 .. code:: python
 
-   from climatecontrol.settings_parser import Settings
-   settings_map = Settings(prefix='MY_APP')
-   print(dict(settings_map))
+   from climatecontrol import climate
+   print(climate.settings)
 
    {
        'value1': 'test1',
@@ -62,9 +61,9 @@ settings:
 .. code:: python
 
    import os
-   os.environ['MY_APP_VALUE3'] = 'new_env_data'
-   settings_map.update()
-   print(dict(settings_map))
+   os.environ['CLIMATECONTROL_VALUE3'] = 'new_env_data'
+   climate.reload()
+   print(climate.settings)
 
    {
        'value1': 'test1',
@@ -78,15 +77,15 @@ settings. For this situation we can delimit sections using a double underscore:
 
 .. code:: sh
 
-   export MY_APP_SECTION1__VALUE1=test1
-   export MY_APP_SECTION2__VALUE2=test2
-   export MY_APP_SECTION2__VALUE3=test3
-   export MY_APP_SECTION2__SUB_SECTION__VALUE4=test4
+   export CLIMATECONTROL_SECTION1__VALUE1=test1
+   export CLIMATECONTROL_SECTION2__VALUE2=test2
+   export CLIMATECONTROL_SECTION2__VALUE3=test3
+   export CLIMATECONTROL_SECTION2__SUB_SECTION__VALUE4=test4
 
 .. code:: python
 
-   settings_map = Settings(prefix='MY_APP')
-   print(dict(settings_map))
+   from climatecontrol import climate
+   print(climate.settings)
 
    {
        'section1': {
@@ -111,7 +110,7 @@ Settings files can be yaml files (`.yml`/ `.yaml`), json files (`.json`) or toml
 
 .. code-block:: sh
 
-   export MY_APP_SETTINGS_FILE=./my_settings_file.yml
+   export CLIMATECONTROL_SETTINGS_FILE=./my_settings_file.yml
 
 
 The file could look like this:
@@ -130,7 +129,7 @@ or in toml form:
 
 .. code-block:: sh
 
-   export MY_APP_SETTINGS_FILE=./my_settings_file.toml
+   export CLIMATECONTROL_SETTINGS_FILE=./my_settings_file.toml
 
 .. code-block:: sh
 
@@ -171,7 +170,7 @@ or using an environment variable:
 
 .. code-block:: sh
 
-   export MY_APP_SECTION1_SUBSECTION1_FROM_FILE="/home/myuser/supersecret.txt"
+   export CLIMATECONTROL_SECTION1_SUBSECTION1_FROM_FILE="/home/myuser/supersecret.txt"
 
 will both write the content of the file at `"/home/myuser/supersecret.txt"`
 into the variable `section1 -> subsection1`.
@@ -199,7 +198,7 @@ or using an environment variable:
 
 .. code-block:: sh
 
-   export MY_APP_SECTION1_SUBSECTION1_FROM_FILE="/home/myuser/supersecret.txt"
+   export CLIMATECONTROL_SECTION1_SUBSECTION1_FROM_FILE="/home/myuser/supersecret.txt"
 
 will both write "some value" into the variable `section1 -> subsection1`.
 
@@ -240,6 +239,40 @@ which would result in a settings structure:
    }
 
 
+Extensions
+----------
+
+While the default `climate` object is great for most uses, perhaps you already
+have a settings object style that you like or use a specific library for
+validation.  In these cases, CLIMATECONTROL can be extended to use these
+libraries.
+
+Dataclasses
+^^^^^^^^^^^
+
+.. code-block:: python
+
+   from dataclasses import dataclass, field
+   from climatecontrol.ext.dataclasses import Climate
+
+   @dataclass
+   class SettingsSubschema:
+       d: str = "weee!"
+       e: int = 0
+
+   @dataclass
+   class SettingsSchema:
+       c: SettingsSubschema = field(default_factory=SettingsSubschema)
+       a: int = 1
+       b: str = "yeah"
+
+   climate = Climate(dataclass_cls=SettingsSchema)
+   climate.update({'c': {'e': 2}})
+   print(climate.settings)
+   # outputs:
+   SettingsSchema(c=SettingsSubschema(d='weee!', e=2), a=1, b='yeah')
+
+               
 Integrations
 ------------
 
@@ -255,9 +288,9 @@ Write your command line application like this:
    import click
 
    @click.command()
-   @settings_map.click_settings_file_option()
+   @climate.click_settings_file_option()
    def cli():
-      print(dict(settings_parser))
+      print(climate.settings)
 
 save it to a file like "cli.py" and then call it after installing click:
 
@@ -296,9 +329,9 @@ python standard library logging using that section directly:
 .. code:: python
 
    import logging
-
-   settings_map = Settings(prefix='MY_APP')
-   settings_map.setup_logging()
+   from climatecontrol import climate
+         
+   climate.setup_logging()
    logging.debug('test')
    # outputs: DEBUG > test
 
@@ -316,15 +349,16 @@ temporarily:
 
 .. code-block:: python
 
-   settings_map.update({'a': 1})
+   climate.update({'a': 1})
    # Enter a temporary changes context block:
-   with settings_map.temporary_changes():
-       settings_map.update({'a': 1})
+   with climate.temporary_changes():
+       climate.update({'a': 1})
        # Inside the context, the settings can be modified and used as you choose
-       print(settings_map['a'])  # outputs: 2
+       print(climate['a'])  # outputs: 2
    # After the context exits the settings map
-   print(settings_map['a'])  # outputs: 1
+   print(climate['a'])  # outputs: 1
 
+               
 Contributing
 ============
 
