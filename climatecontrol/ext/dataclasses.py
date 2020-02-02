@@ -6,8 +6,8 @@ from typing import Generic, Mapping, Type, TypeVar
 import dacite
 
 from climatecontrol.fragment import FragmentPath
-from climatecontrol.settings_parser import Climate as BaseClimate
-from climatecontrol.settings_parser import SettingsItem as BaseSettingsItem
+from climatecontrol.core import Climate as BaseClimate
+from climatecontrol.core import SettingsItem as BaseSettingsItem
 
 T = TypeVar("T")
 

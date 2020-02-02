@@ -71,7 +71,7 @@ class SettingsItem(ObjectProxy):
         >>> s.b
         {'c': 6}
         >>> type(s.b)
-        <class 'climatecontrol.settings_parser.SettingsItem'>
+        <class 'climatecontrol.core.SettingsItem'>
 
     """
 
@@ -483,7 +483,7 @@ class Climate:
         settings.
 
         Example:
-            >>> from climatecontrol.settings_parser import Climate
+            >>> from climatecontrol.core import Climate
             >>> climate = Climate()
             >>> climate.update({'a': 1})
             >>> with climate.temporary_changes():

@@ -191,4 +191,4 @@ def mock_env_settings_file(mock_os_environ, mock_settings_file):
 @pytest.fixture
 def mock_env_parser(mocker):
     """Mock out environment variable parser."""
-    return mocker.patch("climatecontrol.settings_parser.EnvParser")
+    return mocker.patch("climatecontrol.core.EnvParser")

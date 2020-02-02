@@ -2,11 +2,11 @@
 
 import click
 
-from . import settings_parser
+from . import core
 
 
 def click_settings_file_option(
-    settings_obj: settings_parser.Climate, click_obj=click, option_name="settings", **kw
+    settings_obj: core.Climate, click_obj=click, option_name="settings", **kw
 ):
     """Build a `click` option decorator.
 
@@ -20,7 +20,7 @@ def click_settings_file_option(
         .. code-block:: python
 
            import click
-           from climatecontrol import settings_parser, cli_utils
+           from climatecontrol import core, cli_utils
 
            settings_map = settings_parser.Climate(env_prefix='TEST_STUFF')
 
