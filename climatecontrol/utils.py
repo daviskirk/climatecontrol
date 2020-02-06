@@ -3,9 +3,10 @@
 import collections
 import json
 from copy import deepcopy
-from enum import Enum
 from itertools import zip_longest
 from typing import Any, Mapping, Sequence, Union
+
+from climatecontrol.constants import EMPTY
 
 
 def get_nested(obj: Union[Mapping, Sequence], path: Sequence) -> Any:
@@ -79,15 +80,3 @@ def int_if_digit(s: str):
     except AttributeError:
         pass
     return s
-
-
-class _Empty(Enum):
-    """Object representing an empty item."""
-
-    EMPTY = None
-
-    def __repr__(self):
-        return "<EMPTY>"  # pragma: nocover
-
-
-EMPTY = _Empty.EMPTY

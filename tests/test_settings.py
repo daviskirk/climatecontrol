@@ -8,7 +8,6 @@ from unittest.mock import MagicMock
 
 import click
 import pytest
-import toml
 from click.testing import CliRunner
 
 from climatecontrol import cli_utils, core  # noqa: E402
@@ -116,88 +115,85 @@ def test_parse_from_env_vars(mock_os_environ, settings_update, var_content, expe
 )
 def test_settings_files_fail(mock_empty_os_environ, settings_files):
     """Check that passing invalid settings files really results in errors."""
-    climate = core.Climate(
-        prefix="TEST_STUFF", settings_files=settings_files
-    )
+    climate = core.Climate(prefix="TEST_STUFF", settings_files=settings_files)
     with pytest.raises(NoCompatibleLoaderFoundError):
         climate.update()
 
 
 @pytest.mark.parametrize(
-    "file_str, mock_module",
+    "file_str, filename, mock_module",
     [
-        ("---\na: 5", "climatecontrol.file_loaders.yaml"),
-        ("[section]\na = 5", "climatecontrol.file_loaders.toml"),
+        ("---\na: 5", "test.yaml", "climatecontrol.file_loaders.yaml"),
+        ("[section]\na = 5", "test.toml", "climatecontrol.file_loaders.toml"),
     ],
 )
 def test_file_loader_module_import_fail(
-    mock_empty_os_environ, monkeypatch, file_str, mock_module
+    mock_empty_os_environ, monkeypatch, file_str, filename, mock_module, tmpdir
 ):
     """Check that uninstalled yaml or toml really results in an error."""
     # Check that without mocking everything is file:
-    climate = core.Climate(prefix="TEST_STUFF", settings_files=[file_str])
+    path = tmpdir / filename
+    with open(tmpdir / filename, "w") as f:
+        f.write(file_str)
+
+    climate = core.Climate(prefix="TEST_STUFF", settings_files=[str(path)])
     climate.update()
     # Now fake not having imported yaml
     monkeypatch.setattr(mock_module, None)
-    climate = core.Climate(prefix="TEST_STUFF", settings_files=[file_str])
+    climate = core.Climate(prefix="TEST_STUFF", settings_files=[str(path)])
     with pytest.raises(ImportError):
         climate.update()
 
 
 @pytest.mark.parametrize(
-    "settings_file_content",
-    ["---\na:\n  b: 5\n", '{"a": {"b": 5}}', "[a]\nb=5"],  # yaml  # json  # toml
-)
-def test_settings_file_content(mock_empty_os_environ, settings_file_content):
-    """Check parsing file content from different file types works."""
-    climate = core.Climate(
-        prefix="TEST_STUFF", settings_files=settings_file_content
-    )
-    assert dict(climate.settings) == {"a": {"b": 5}}
-
-
-@pytest.mark.parametrize(
-    "settings_file_content,error",
+    "key,content,expected",
     [
-        (
+        pytest.param(
+            "root_from_yaml_content",
             "a:\n  b: 5\n",
-            NoCompatibleLoaderFoundError,
+            {"root": {"a": {"b": 5}}},
+            id="yaml content",
         ),  # no file loader with "a" as valid start
-        (
-            '[{"a": {"b": 5}}]',
-            toml.TomlDecodeError,
+        pytest.param(
+            "root_from_json_content",
+            '{"a": {"b": 5}}',
+            {"root": {"a": {"b": 5}}},
+            id="json content",
         ),  # json must be object, seeing "[" assumes a toml file
-        (
-            "b=5",
-            NoCompatibleLoaderFoundError,
+        pytest.param(
+            "root_from_toml_content",
+            "[a]\nb=5",
+            {"root": {"a": {"b": 5}}},
+            id="toml content",
+        ),  # toml file has to start with [ or it is not parsable
+        pytest.param(
+            "root_from_toml_content", "[a\nb=5", {}, id="invalid toml syntax"
+        ),  # toml file has to start with [ or it is not parsable
+        pytest.param(
+            "root_from_json_content",
+            '{"a": {"b_from_yaml_content": "c: 6"}}',
+            {"root": {"a": {"b": {"c": 6}}}},
+            id="nested from_content keys",
         ),  # toml file has to start with [ or it is not parsable
     ],
 )
-def test_settings_file_content_fail(
-    mock_empty_os_environ, settings_file_content, error
-):
+def test_from_content(mock_empty_os_environ, key, content, expected):
     """Check parsing file content from different file types raises an error on incorrect file content."""
-    climate = core.Climate(
-        prefix="TEST_STUFF", settings_files=settings_file_content
-    )
-    with pytest.raises(error):
-        climate.update()
+    climate = core.Climate()
+    climate.update({key: content})
+    assert dict(climate.settings) == expected
 
 
 def test_settings_single_file(mock_empty_os_environ, mock_settings_file, tmpdir):
     """Check that setting a the "settings_files" option works correctly."""
-    climate = core.Climate(
-        prefix="TEST_STUFF", settings_files=mock_settings_file[0]
-    )
+    climate = core.Climate(prefix="TEST_STUFF", settings_files=mock_settings_file[0])
     assert isinstance(climate.settings, Mapping)
     assert dict(climate.settings) == mock_settings_file[1]
 
 
 def test_settings_multiple_files(mock_empty_os_environ, mock_settings_files, tmpdir):
     """Check that setting multiple files as "settings_files" option works correctly."""
-    climate = core.Climate(
-        prefix="TEST_STUFF", settings_files=mock_settings_files[0]
-    )
+    climate = core.Climate(prefix="TEST_STUFF", settings_files=mock_settings_files[0])
     assert isinstance(climate.settings, Mapping)
     assert dict(climate.settings) == mock_settings_files[1]
 
@@ -237,9 +233,7 @@ def test_settings_multiple_files_and_env(mock_os_environ, mock_settings_files, t
     result.
 
     """
-    climate = core.Climate(
-        prefix="TEST_STUFF", settings_files=mock_settings_files[0]
-    )
+    climate = core.Climate(prefix="TEST_STUFF", settings_files=mock_settings_files[0])
     assert isinstance(climate.settings, Mapping)
 
     assert dict(climate.settings) == {
@@ -406,9 +400,7 @@ def test_multiple_settings_files(tmpdir):
     content.write("test2")
     p2.write(json.dumps({"foo_from_file": str(content)}))
 
-    climate = core.Climate(
-        prefix="TEST_STUFF", settings_files=[str(p1), str(p2)]
-    )
+    climate = core.Climate(prefix="TEST_STUFF", settings_files=[str(p1), str(p2)])
     assert dict(climate.settings) == {"foo": "test2"}
 
     p3 = subfolder.join("settings3.json")
@@ -434,9 +426,7 @@ def mock_parser_fcn(s):
 )
 def test_assign(mock_empty_os_environ, mock_env_parser, attr, value, expected):
     """Test that assigning attributes on settings object works."""
-    s = core.Climate(
-        prefix="this", settings_file_suffix="suffix", parser=None
-    )
+    s = core.Climate(prefix="this", settings_file_suffix="suffix", parser=None)
     assert s.settings_files == []
     setattr(s, attr, value)
     assert getattr(s, attr) == expected
@@ -449,9 +439,7 @@ def test_assign(mock_empty_os_environ, mock_env_parser, attr, value, expected):
 def test_update_clear_reload(mock_empty_os_environ, update, envvar, clear, reload):
     """Test if updating settings after initialization works."""
     os.environ["THIS_SECTION__MY_VALUE"] = "original"
-    climate = core.Climate(
-        prefix="this", settings_file_suffix="suffix", parser=None
-    )
+    climate = core.Climate(prefix="this", settings_file_suffix="suffix", parser=None)
     original = dict(climate.settings)
     assert original == {"section": {"my_value": "original"}}
 
@@ -479,9 +467,7 @@ def test_bad_config_recovery(mock_empty_os_environ):
             raise KeyError("Invalid config")
         return d
 
-    climate = core.Climate(
-        prefix="this", settings_file_suffix="suffix", parser=check
-    )
+    climate = core.Climate(prefix="this", settings_file_suffix="suffix", parser=check)
     assert dict(climate.settings) == {}
 
     # Try to set incorrect config
@@ -640,9 +626,7 @@ def test_setup_logging(monkeypatch, update, mock_empty_os_environ):
 def test_update_log(caplog, mock_empty_os_environ, mock_settings_file):
     """Test writing out an example configuration file."""
     settings_file_path, expected = mock_settings_file
-    climate = core.Climate(
-        prefix="TEST_STUFF", settings_files=settings_file_path
-    )
+    climate = core.Climate(prefix="TEST_STUFF", settings_files=settings_file_path)
     assert climate.update_log == "", "before updating, the update log should be empty"
     climate.update({"a": core.REMOVED, "b": 2})
     lines = climate.update_log.split("\n")

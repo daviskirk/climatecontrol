@@ -1,11 +1,9 @@
 """Climate parser."""
 
 import logging
-import os
 import warnings
 from contextlib import contextmanager
 from copy import deepcopy
-from enum import Enum
 from itertools import chain
 from pprint import pformat
 from typing import (
@@ -26,11 +24,17 @@ from typing import (
 
 import wrapt
 
-from .env_parser import EnvParser
-from .file_loaders import NoCompatibleLoaderFoundError, iter_load, load_from_filepath
-from .fragment import Fragment, FragmentPath
-from .logtools import DEFAULT_LOG_SETTINGS, logging_config
-from .utils import merge_nested, parse_as_json_if_possible
+from climatecontrol.constants import REMOVED
+from climatecontrol.env_parser import EnvParser
+from climatecontrol.file_loaders import iter_load
+from climatecontrol.fragment import Fragment, FragmentPath
+from climatecontrol.logtools import DEFAULT_LOG_SETTINGS, logging_config
+from climatecontrol.processors import (
+    replace_from_content_vars,
+    replace_from_env_vars,
+    replace_from_file_vars,
+)
+from climatecontrol.utils import merge_nested
 
 try:
     import click
@@ -140,93 +144,6 @@ class SettingsItem(ObjectProxy):
         return isinstance(value, MutableMapping) or isinstance(value, MutableSequence)
 
 
-def replace_from_env_vars(
-    fragment: Fragment, postfix_trigger: str = "_from_env"
-) -> Iterator[Fragment]:
-    """Read and replace settings values from environment variables.
-
-    Args:
-        fragment: Fragment to process
-        postfix_trigger: Optionally configurable string to trigger a
-            replacement with an environment variable. If a key is found which
-            ends with this string, the value is assumed to be the name of an
-            environemtn variable and the settings value will be set to the
-            contents of that variable.
-
-    Yields:
-        Additional fragments to patch the original fragment.
-
-    """
-    for leaf in fragment.iter_leaves():
-        if not leaf.path or leaf.value == REMOVED:
-            continue
-        key, value = leaf.path[-1], leaf.value
-        if (
-            isinstance(value, str)
-            and isinstance(key, str)
-            and key.lower().endswith(postfix_trigger)
-        ):
-            env_var = value
-            yield leaf.clone(value=REMOVED)
-            try:
-                env_var_value = os.environ[env_var]
-            except KeyError as e:
-                logger.info(
-                    "Error while trying to load environment variable: %s. (%s) Skipping...",
-                    env_var,
-                    e,
-                )
-            else:
-                new_key = key[: -len(postfix_trigger)]
-                new_value = parse_as_json_if_possible(env_var_value)
-                yield leaf.clone(value=new_value, path=list(leaf.path[:-1]) + [new_key])
-
-
-def replace_from_file_vars(
-    fragment: Fragment, postfix_trigger: str = "_from_file"
-) -> Iterator[Fragment]:
-    """Read and replace settings values from content local files.
-
-    Args:
-        fragment: Fragment to process
-        postfix_trigger: Optionally configurable string to trigger a local
-            file value. If a key is found which ends with this string, the
-            value is assumed to be a file path and the settings value will
-            be set to the content of the file.
-
-    Yields:
-        Additional fragments to patch the original fragment.
-
-    """
-    for leaf in fragment.iter_leaves():
-        if not leaf.path or leaf.value == REMOVED:
-            continue
-        key, value = leaf.path[-1], leaf.value
-        if (
-            isinstance(value, str)
-            and isinstance(key, str)
-            and key.lower().endswith(postfix_trigger)
-        ):
-            filepath = value
-            yield leaf.clone(value=REMOVED)
-            try:
-                try:
-                    new_value: Any = load_from_filepath(filepath)
-                except NoCompatibleLoaderFoundError:
-                    # just load as plain text file and interpret as string
-                    with open(filepath) as f:
-                        new_value = f.read().strip()
-            except FileNotFoundError as e:
-                logger.info(
-                    "Error while trying to load variable from file: %s. (%s) Skipping...",
-                    filepath,
-                    e,
-                )
-            else:
-                new_key = key[: -len(postfix_trigger)]
-                yield leaf.clone(value=new_value, path=list(leaf.path[:-1]) + [new_key])
-
-
 class Climate:
     """A Climate instance allows settings to be loaded from a settings file or environment variables.
 
@@ -273,6 +190,7 @@ class Climate:
     _processors: Tuple[Callable[[Fragment], Iterator[Fragment]], ...] = (
         replace_from_file_vars,
         replace_from_env_vars,
+        replace_from_content_vars,
     )
 
     def __init__(
@@ -599,15 +517,3 @@ def clean_removed_items(obj):
 
     for key in keys_to_remove:
         del obj[key]
-
-
-class _Removed(Enum):
-    """Object representing an empty item."""
-
-    REMOVED = None
-
-    def __repr__(self):
-        return "<REMOVED>"  # pragma: nocover
-
-
-REMOVED = _Removed.REMOVED

@@ -19,57 +19,32 @@ except ImportError:  # pragma: nocover
     yaml = None  # type: ignore
 
 
-def iter_load(path_or_content: str) -> Iterator[Fragment]:
+def iter_load(path: str) -> Iterator[Fragment]:
     """Read settings file from a filepath or from a string representing the file contents.
 
-    If ``path_or_content`` is a valid filename or glob expression, load the
-    file (or all matching files). If ``path_or_content`` represents a json,
-    yaml or toml string instead (the contents of a json/toml/yaml file), parse
-    the string directly.
+    If ``path`` is a valid filename or glob expression, load the
+    file (or all matching files).
 
-    Note that json, yaml and toml files are read. If ``path_or_content`` is a
-    string, we will try to guess what file type you meant. Note that this last
-    feature is not perfect!
+    Note that json, yaml and toml files are read.
 
     Args:
-        path_or_content: Path to file or file contents
+        path: Path to file or file contents
 
     Raises:
         FileLoadError: when an error occurs during the loading of a file.
-        ContentLoadError: when an error occurs during the loading of file contents.
         NoCompatibleLoaderFoundError: when no compatible loader was found for
-            this filepath or content type.
+          this filepath or content type.
 
     """
-    if not path_or_content:
+    if not path:
         return
-    expanded_path_or_content = os.path.expanduser(os.path.expandvars(path_or_content))
-    globbed_files: List[str] = glob.glob(expanded_path_or_content)
-    if globbed_files:
-        for filepath in sorted(globbed_files):
-            yield Fragment(value=load_from_filepath(filepath), source=filepath)
-        return
-
-    # assume content if no files were found
-    yield Fragment(value=load_from_content(path_or_content), source="content")
-
-
-def load_from_content(content: str) -> Dict[str, Any]:
-    """Read settings from a content string."""
-    file_data: Dict[str, Any] = {}
-    if not content:
-        return file_data
-    for loader in FileLoader.registered_loaders:
-        if loader.is_content(content):
-            file_data = loader.from_content(content)
-            break
+    expanded_path = os.path.expanduser(os.path.expandvars(path))
+    if glob.has_magic(expanded_path):
+        filepaths: List[str] = sorted(glob.glob(expanded_path))
     else:
-        raise NoCompatibleLoaderFoundError(
-            "Failed to load settings from content. No compatible loader: {}".format(
-                content
-            )
-        )
-    return file_data
+        filepaths = [expanded_path]
+    for filepath in filepaths:
+        yield Fragment(value=load_from_filepath(filepath), source=filepath)
 
 
 def load_from_filepath(filepath: str) -> Dict[str, Any]:
@@ -103,6 +78,7 @@ def load_from_filepath(filepath: str) -> Dict[str, Any]:
 class FileLoader(ABC):
     """Abstract base class for file/file content loading."""
 
+    format_name: str = ""
     valid_file_extensions: Tuple[str, ...] = ()
     valid_content_start: Tuple = ()
     registered_loaders: List["FileLoader"] = []
@@ -146,6 +122,7 @@ class FileLoader(ABC):
 class JsonLoader(FileLoader):
     """FileLoader for .json files."""
 
+    format_name = "json"
     valid_file_extensions = (".json",)
     valid_content_start = ("{",)
 
@@ -170,6 +147,7 @@ class JsonLoader(FileLoader):
 class YamlLoader(FileLoader):
     """FileLoader for .yaml files."""
 
+    format_name = "yaml"
     valid_file_extensions = (".yml", ".yaml")
     valid_content_start = ("---",)
 
@@ -198,6 +176,7 @@ class YamlLoader(FileLoader):
 class TomlLoader(FileLoader):
     """FileLoader for .toml files."""
 
+    format_name = "toml"
     valid_file_extensions = (".toml", ".ini", ".config", ".cfg")
     valid_content_start = ("[",)  # TODO: This only works if settings file has sections.
 

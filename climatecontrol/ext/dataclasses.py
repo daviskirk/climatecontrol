@@ -5,9 +5,9 @@ from typing import Generic, Mapping, Type, TypeVar
 
 import dacite
 
-from climatecontrol.fragment import FragmentPath
 from climatecontrol.core import Climate as BaseClimate
 from climatecontrol.core import SettingsItem as BaseSettingsItem
+from climatecontrol.fragment import FragmentPath
 
 T = TypeVar("T")
 

@@ -6,8 +6,8 @@ namespaced environment variables.
 :licence: MIT, see LICENSE file for more details.
 
 """
-from .exceptions import SettingsLoadError, SettingsValidationError
 from .core import Climate
+from .exceptions import SettingsLoadError, SettingsValidationError
 
 climate = Climate()
 Settings = Climate  # for backwards compatibility
