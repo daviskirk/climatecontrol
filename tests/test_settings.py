@@ -1,9 +1,9 @@
 """Test settings."""
-
 import json
 import os
 import sys
 from collections.abc import Mapping
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import click
@@ -410,6 +410,63 @@ def test_multiple_settings_files(tmpdir):
         prefix="TEST_STUFF", settings_files=[str(p1), str(p2), str(p3)]
     )
     assert dict(climate.settings) == {"foo": "test3"}
+
+
+def test_inferred_settings_files(tmp_path, mock_empty_os_environ):
+    """Check that inferred settings are gathered correctly."""
+    climate = core.Climate()
+
+    # write files into fake project directory tree
+    (tmp_path / "climatecontrol_settings.yaml").write_text("unused = 5\n")
+
+    project_dir = tmp_path / "myproject"
+    project_dir.mkdir()
+    (project_dir / ".git").mkdir()
+    p_file = project_dir / ".climatecontrol_settings.conf"
+    p_file.write_text('used = "project dir"\nproject_dir = "yes"')
+
+    subproject_dir = project_dir / "subproject"
+    subproject_dir.mkdir()
+    sp_file = subproject_dir / "climatecontrol settings.yaml"
+    sp_file.write_text("subproject: true\nused: subproject dir")
+
+    package_dir = subproject_dir / "package1"
+    package_dir.mkdir()
+    (package_dir / "climatecontrol-settings.json").write_text(
+        '{"unused": "wrong and unused"}'
+    )
+
+    project_settings_dir = tmp_path / "myproject" / ".climatecontrol_settings"
+    project_settings_dir.mkdir()
+    (project_settings_dir / "climatecontrol settings").write_text("not used either")
+    (project_settings_dir / "0").mkdir()
+    (project_settings_dir / "1").mkdir()
+    p0_file = project_settings_dir / "0" / "climatecontrol settings.yml"
+    p1_file = project_settings_dir / "1" / "climatecontrol settings.yml"
+    p0_file.write_text("p_sub: 0\np_sub0: true")
+    p1_file.write_text("p_sub: 1\np_sub1: true")
+
+    # Switch to the subpoject directory and compute the inferred files as though the program had been started there.
+    # At the end we have to make sure that we switch back so that other tests don't get messed up.
+    original_path = Path(".").resolve()
+    try:
+        os.chdir(subproject_dir)
+        actual_files = [p.resolve() for p in climate.inferred_settings_files]
+        actual_settings = dict(climate.settings)
+    finally:
+        os.chdir(original_path)
+
+    # Assert
+    expected_files = [p.resolve() for p in [p_file, p0_file, p1_file, sp_file]]
+    assert actual_files == expected_files
+    assert actual_settings == {
+        "used": "subproject dir",
+        "project_dir": "yes",
+        "subproject": True,
+        "p_sub": 1,
+        "p_sub0": True,
+        "p_sub1": True,
+    }
 
 
 def mock_parser_fcn(s):

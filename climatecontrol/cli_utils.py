@@ -2,7 +2,7 @@
 
 import click
 
-from . import core
+from climatecontrol import core
 
 
 def click_settings_file_option(

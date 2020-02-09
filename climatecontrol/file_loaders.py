@@ -4,7 +4,8 @@ import glob
 import json
 import os
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Iterator, List, Tuple
+from pathlib import Path
+from typing import Any, Dict, Iterator, List, Tuple, Union
 
 from .exceptions import NoCompatibleLoaderFoundError
 from .fragment import Fragment
@@ -19,7 +20,7 @@ except ImportError:  # pragma: nocover
     yaml = None  # type: ignore
 
 
-def iter_load(path: str) -> Iterator[Fragment]:
+def iter_load(path: Union[str, Path]) -> Iterator[Fragment]:
     """Read settings file from a filepath or from a string representing the file contents.
 
     If ``path`` is a valid filename or glob expression, load the
@@ -38,7 +39,7 @@ def iter_load(path: str) -> Iterator[Fragment]:
     """
     if not path:
         return
-    expanded_path = os.path.expanduser(os.path.expandvars(path))
+    expanded_path: str = os.path.expanduser(os.path.expandvars(path))
     if glob.has_magic(expanded_path):
         filepaths: List[str] = sorted(glob.glob(expanded_path))
     else:
@@ -177,7 +178,7 @@ class TomlLoader(FileLoader):
     """FileLoader for .toml files."""
 
     format_name = "toml"
-    valid_file_extensions = (".toml", ".ini", ".config", ".cfg")
+    valid_file_extensions = (".toml", ".ini", ".config", ".conf", ".cfg")
     valid_content_start = ("[",)  # TODO: This only works if settings file has sections.
 
     @classmethod

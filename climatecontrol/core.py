@@ -1,10 +1,10 @@
 """Climate parser."""
-
 import logging
 import warnings
 from contextlib import contextmanager
 from copy import deepcopy
 from itertools import chain
+from pathlib import Path
 from pprint import pformat
 from typing import (
     Any,
@@ -26,7 +26,7 @@ import wrapt
 
 from climatecontrol.constants import REMOVED
 from climatecontrol.env_parser import EnvParser
-from climatecontrol.file_loaders import iter_load
+from climatecontrol.file_loaders import FileLoader, iter_load
 from climatecontrol.fragment import Fragment, FragmentPath
 from climatecontrol.logtools import DEFAULT_LOG_SETTINGS, logging_config
 from climatecontrol.processors import (
@@ -255,6 +255,98 @@ class Climate:
         self._settings_files = list(files)
 
     @property
+    def inferred_settings_files(self) -> List[Path]:
+        """Infer settings files from current directory and parent directories.
+
+        1. Search upward until a repository root is found (symbolized by a get repository)
+        2. Along the directories starting with the project root up until the current directory search for the following files:
+          * Files matching the pattern: `*<prefix>*settings*<loadable filetype>`
+          * Files matching the pattern above but within subdirectories named `*<prefix>*settings*`
+          * Files matching the pattern above in any recursive subdirectories of the subdirectory mentioned above
+
+        Note that the prefix is lower cased even if it is given as upper or mixed case.
+
+        Given a filestructure:
+
+        ::
+
+
+           |-- myuser/
+           |-- unused_climatecontrol_settings.yaml
+           |-- myrepo/
+               |-- .git/
+               |-- base-climatecontrol-settings.json
+               |-- climatecontrol_settings/
+                   |-- climatecontrol_settings.toml
+                   |-- climatecontrol_settings_2.yml
+                   |-- 0/
+                       |-- climatecontrol_settings.yml
+                   |-- 1/
+                       |-- climatecontrol_settings.json
+               |-- myproject/
+                   |-- climatecontrol.general.settings.yaml
+                   |-- mysubproject/
+                       |-- .climatecontrol.settings.yaml
+
+        and assuming the current working directory is `myuser/myproject/mysubproject`, the inferred settings files would be:
+
+        ::
+            myuser/myrepo/base-climatecontrol-settings.json
+            myuser/myrepo/climatecontrol_settings/climatecontrol_settings.toml
+            myuser/myrepo/climatecontrol_settings/climatecontrol_settings_2.yml
+            myuser/myrepo/climatecontrol_settings/0/climatecontrol_settings.yml
+            myuser/myrepo/climatecontrol_settings/1/climatecontrol_settings.json
+            myuser/myproject/climatecontrol.general.settings.yaml
+            myuser/mysubproject/.climatecontrol.settings.yaml
+
+        """
+        prefix = self.env_parser.prefix.strip(self.env_parser.split_char).lower()
+        base_pattern = f"*{prefix}*settings"
+        glob_patterns: List[str] = []
+        for loader in FileLoader.registered_loaders:
+            for ext in loader.valid_file_extensions:
+                glob_patterns.append(f"{base_pattern}{ext}")
+
+        def find_settings_files(path: Path, recursive=False):
+            glob = path.rglob if recursive else path.glob
+            return sorted(
+                filepath
+                for pattern in glob_patterns
+                for filepath in glob(pattern)
+                if filepath.is_file()
+            )
+
+        current_path: Path = Path(".")
+        search_directories: List[Path] = []
+        project_root_candidates = [
+            ".git",
+            ".hg",
+            "setup.py",
+            "requirements.txt",
+            "environment.yml",
+            "environment.yaml",
+            "pyproject.toml",
+        ]
+        while current_path.is_dir():
+            search_directories.append(current_path)
+            if any(
+                (current_path / candidate).exists()
+                for candidate in project_root_candidates
+            ):
+                break
+            current_path = current_path / ".."
+
+        filepaths: List[Path] = []
+        for directory in reversed(search_directories):
+            filepaths.extend(find_settings_files(directory))
+            for sub_dir in directory.glob(base_pattern):
+                if not sub_dir.is_dir():
+                    continue
+                filepaths.extend(find_settings_files(sub_dir, recursive=True))
+
+        return filepaths
+
+    @property
     def update_log(self) -> str:
         """Log of all each loaded settings variable."""
 
@@ -381,17 +473,9 @@ class Climate:
 
     def click_settings_file_option(self, **kw) -> Callable[..., Any]:
         """See :func:`cli_utils.click_settings_file_option`."""
-        from . import cli_utils
+        from climatecontrol import cli_utils
 
         return cli_utils.click_settings_file_option(self, **kw)
-
-    def _process_fragment(self, fragment: Fragment) -> Iterator[Fragment]:
-        """Preprocess a settings fragment and return the new version."""
-        for process in self._processors:
-            for new_fragment in process(fragment):
-                yield new_fragment
-                # recursively process new fragments as well
-                yield from self._process_fragment(new_fragment)
 
     @contextmanager
     def temporary_changes(self):
@@ -460,6 +544,14 @@ class Climate:
         parsed = self.parse(expanded)
         return parsed, combined, fragments
 
+    def _process_fragment(self, fragment: Fragment) -> Iterator[Fragment]:
+        """Preprocess a settings fragment and return the new version."""
+        for process in self._processors:
+            for new_fragment in process(fragment):
+                yield new_fragment
+                # recursively process new fragments as well
+                yield from self._process_fragment(new_fragment)
+
     def _iter_process_fragments(
         self, fragments: Iterable[Fragment]
     ) -> Iterator[Fragment]:
@@ -494,6 +586,9 @@ class Climate:
         return combined_fragment
 
     def _iter_load_files(self) -> Iterator[Fragment]:
+        for entry in self.inferred_settings_files:
+            yield from iter_load(entry)
+
         for entry in self.settings_files:
             yield from iter_load(entry)
 
