@@ -11,6 +11,7 @@ requirements: list = ["wrapt"]
 dataclasses_requirements = [
     "dacite",
     "dataclasses; python_version < '3.7'",
+    "pydantic",
 ]
 
 test_requirements = [

@@ -412,10 +412,11 @@ def test_multiple_settings_files(tmpdir):
     assert dict(climate.settings) == {"foo": "test3"}
 
 
-def test_inferred_settings_files(tmp_path, mock_empty_os_environ):
+def test_inferred_settings_files(tmpdir, mock_empty_os_environ):
     """Check that inferred settings are gathered correctly."""
     climate = core.Climate()
 
+    tmp_path = Path(tmpdir)
     # write files into fake project directory tree
     (tmp_path / "climatecontrol_settings.yaml").write_text("unused = 5\n")
 
@@ -441,24 +442,21 @@ def test_inferred_settings_files(tmp_path, mock_empty_os_environ):
     (project_settings_dir / "climatecontrol settings").write_text("not used either")
     (project_settings_dir / "0").mkdir()
     (project_settings_dir / "1").mkdir()
-    p0_file = project_settings_dir / "0" / "climatecontrol settings.yml"
-    p1_file = project_settings_dir / "1" / "climatecontrol settings.yml"
+    p0_file = project_settings_dir / "0" / "settings.yml"
+    p1_file = project_settings_dir / "1" / "settings.yml"
     p0_file.write_text("p_sub: 0\np_sub0: true")
     p1_file.write_text("p_sub: 1\np_sub1: true")
 
     # Switch to the subpoject directory and compute the inferred files as though the program had been started there.
     # At the end we have to make sure that we switch back so that other tests don't get messed up.
-    original_path = Path(".").resolve()
-    try:
-        os.chdir(subproject_dir)
-        actual_files = [p.resolve() for p in climate.inferred_settings_files]
-        actual_settings = dict(climate.settings)
-    finally:
-        os.chdir(original_path)
+    os.chdir(subproject_dir)
 
     # Assert
+    actual_files = [p.resolve() for p in climate.inferred_settings_files]
     expected_files = [p.resolve() for p in [p_file, p0_file, p1_file, sp_file]]
     assert actual_files == expected_files
+
+    actual_settings = dict(climate.settings)
     assert actual_settings == {
         "used": "subproject dir",
         "project_dir": "yes",

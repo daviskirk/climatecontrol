@@ -3,8 +3,6 @@ python:
   - 3.6
   - 3.7
   - 3.8
-install:
-  - pip install coveralls isort mypy==0.750 flake8==3.7.9 flake8-docstrings==1.5.0 black
 script:
   - pip install -e ".[dev]"
   - invoke check
@@ -13,7 +11,7 @@ after_success:
   - coveralls
 deploy:
   provider: pypi
-  user: davis.kirkendall
+  username: davis.kirkendall
   password:
     secure: gxdJaHGWJ7C/GrbLFQTQVFO8W0XCEBX3okMPPTApbjfyT3WAhjFsBvpXM/U5phmWh+wSMZn09+PZL5IVrXc2KywtS1dyowCLHF4WWphNy8uTLRrMOcy/OhbI0eUm1OzLdaiI5EFVOwowPX9HTjuQOo7Z6HRgf2N8a8F8f0cYkFrvRpQo+iTGMZb0qoi4Cfc1hKRpPmkuFaD645ZxPvpcJdV+rHQWt7mNyRQ54Lc3s0E2Caz5qGTSLeAPX8jArXUlneK7TCpSL4LYNtPUn7FlFpIYFpNUojnJczgnQncFoLYRQ8JiDTnmeLxssWwQqtZYKcnXsnFY+BpPrBe5pYmd98+qEI77jX2ldNcq40Bcpgh8k9jWCh7XzNUBCI4jl5SQ01k8si+Rha1yk0m3COt7C3e+/zzC4cSoFxgwyP97TRIxWOAl1o9znfWN0zkfHUIQPUKYZKM7kD9s8bstunFvr8UQxXaqs+6w+nGOMrdOS1pcqBo/qDI6uKFfT1KrnhDLjAc+l1m0nZsl81wlxta9eqkxJXPyLNcmwgzxDHmOoWn2JTl9hSQKlAXBs2FvWU9BykuZNyJCsRlAEN3HuaDBEflgevUkgDQlI00qHRXaqxwLhQZjxF+ZZQKQ4rNqL/QY4ovlgeO6IzzTMRUnhGlj2HwXBW0UAM6kyXoaLh5+LhI=
   on:

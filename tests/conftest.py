@@ -1,14 +1,23 @@
 """Test settings."""
+
 import itertools
 import json
 import os
 from collections import OrderedDict
 from copy import deepcopy
+from pathlib import Path
 from textwrap import dedent
 
 import pytest
 import toml
 import yaml
+
+
+@pytest.fixture(autouse=True)
+def recover_directory(tmpdir):
+    original_dir = Path(".").resolve()
+    yield
+    os.chdir(original_dir)
 
 
 @pytest.fixture(scope="session")

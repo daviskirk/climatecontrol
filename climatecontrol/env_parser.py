@@ -45,11 +45,12 @@ class EnvParser:
             Is constructed automatically.
 
     Examples:
+        >>> os.chdir(getfixture('tmpdir'))  # noqa  # only for test: don't clobber current directory
+        >>>
         >>> env_parser = EnvParser(prefix='THIS_EXAMPLE')
         >>>
-        >>> with open('settings.toml', 'w') as f:
-        ...     _ = f.write('[testgroup]\nother_var = 345')
-        ...
+        >>> _ = open('settings.toml', 'w').write('[testgroup]\nother_var = 345')
+        >>>
         >>> os.environ['THIS_EXAMPLE_TESTGROUP_TESTVAR'] = '27'
         >>> os.environ['THIS_EXAMPLE_SETTINGS_FILE'] = './settings.toml'
         >>>

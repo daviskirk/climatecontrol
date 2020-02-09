@@ -12,7 +12,12 @@
 - Allow environment variables to target list indexes (`CLIMATECONTROL_SECTION__0__VALUE=testvalue`)
 - Settings proxy object to allow attribute queries (i.e.
   `climatecontrol.settings.a.b[0].c`).
-- Added initial support for dataclasses as extention `climatecontrol.ext.dataclasses`
+- Added initial support for dataclasses as extension `climatecontrol.ext.dataclasses`
+- Add "from_*_content" processor allowing direct content to be used in variables
+  (can be helpful for environment variables i.e.
+  `CLIMATECONTROL_SECTION1_FROM_JSON_CONTENT='{"v1": 1, "v2": 2}'`).
+- Add inferred settings files and search for them along the directory structure
+  up to project root (`climatecontrol.core.Climate.inferred_settings_files`).
 
 ### Changed
 

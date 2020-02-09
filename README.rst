@@ -117,6 +117,7 @@ The file could look like this:
 
 .. code-block:: yaml
 
+   # ./climatecontrol_settings.yaml
    section1:
      subsection1 = test1
 
@@ -129,10 +130,7 @@ or in toml form:
 
 .. code-block:: sh
 
-   export CLIMATECONTROL_SETTINGS_FILE=./my_settings_file.toml
-
-.. code-block:: sh
-
+   # ./climatecontrol_settings.toml
    [section1]
    subsection1 = "test1"
 
@@ -143,6 +141,21 @@ or in toml form:
 
 In the following documentation examples, yaml files will be used, but any
 examples will work using the other file syntaxes as well.
+
+See the :meth:`climatecontrol.core.Climate.inferred_settings_files` docstring
+for further examples of how settings files are loaded and how they can be named.
+Also note that you can set your own settings files explicitely either by
+settings an environment variable:
+
+.. code-block:: sh
+
+   export CLIMATECONTROL_SETTINGS_FILE="mysettings.yaml, mysettings.toml, override.yml"
+
+or by adding them in code:
+
+.. code-block:: python
+
+   climate.settings_files.extend(["mysettings.yaml", "mysettings.toml", "override.yml"]
 
 
 Advanced Features
@@ -202,6 +215,24 @@ or using an environment variable:
 
 will both write "some value" into the variable `section1 -> subsection1`.
 
+Settings variables from serialized content
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: yaml
+
+   section1_from_json_content: '{"subsection1": "test", "subsection2": 2}'
+   section2_from_toml_content: 'subsection1 = "test"\nsubsection2 = 2\n'
+   section3_from_yaml_content: 'subsection1: test\nsubsection2: 2\n'
+
+
+The equivilant environment variables are also handled correctly:
+
+.. code-block:: sh
+
+   CLIMATECONTROL_SECTION1_FROM_JSON_CONTENT='{"subsection1": "test", "subsection2": 2}'
+   CLIMATECONTROL_SECTION2_FROM_TOML_CONTENT='subsection1 = "test"\nsubsection2 = 2\n'
+   CLIMATECONTROL_SECTION3_FROM_YAML_CONTENT='subsection1: test\nsubsection2: 2\n'
+
 
 Nested settings files
 ^^^^^^^^^^^^^^^^^^^^^
@@ -250,27 +281,63 @@ libraries.
 Dataclasses
 ^^^^^^^^^^^
 
-.. code-block:: python
+>>> from climatecontrol.ext.dataclasses import Climate
+>>> from dataclasses import dataclass, field
+>>>
+>>> @dataclass
+... class SettingsSubSchema:
+...     d: int = 4
+...
+>>> @dataclass
+... class SettingsSchema:
+...     a: str = 'test'
+...     b: bool = False
+...     c: SettingsSubSchema = field(default_factory=SettingsSubSchema)
+...
+>>> climate = Climate(dataclass_cls=SettingsSchema)
+>>> # defaults are initialized automatically:
+>>> climate.settings.a
+'test'
+>>> climate.settings.c.d
+4
+>>> # Types are checked if given
+>>> climate.update({'c': {'d': 'boom!'}})
+Traceback (most recent call last):
+    ...
+dacite.exceptions.WrongTypeError: wrong type for field "c.d" - should be "int" instead of "str"
 
-   from dataclasses import dataclass, field
-   from climatecontrol.ext.dataclasses import Climate
 
-   @dataclass
-   class SettingsSubschema:
-       d: str = "weee!"
-       e: int = 0
+Pydantic
+^^^^^^^^
 
-   @dataclass
-   class SettingsSchema:
-       c: SettingsSubschema = field(default_factory=SettingsSubschema)
-       a: int = 1
-       b: str = "yeah"
+Pydantic is a great data validation library:
+https://github.com/samuelcolvin/pydantic and climatecontrol also provides a
+simple extension to use pydantic models directly (typing functionality mentioned
+above works here as well).
 
-   climate = Climate(dataclass_cls=SettingsSchema)
-   climate.update({'c': {'e': 2}})
-   print(climate.settings)
-   # outputs:
-   SettingsSchema(c=SettingsSubschema(d='weee!', e=2), a=1, b='yeah')
+>>> from climatecontrol.ext.pydantic import Climate
+>>>
+>>> class SettingsSubSchema(BaseModel):
+...     d: int = 4
+...
+>>> class SettingsSchema(BaseModel):
+...     a: str = 'test'
+...     b: bool = False
+...     c: SettingsSubSchema = SettingsSubSchema()
+...
+>>> climate = Climate(model=SettingsSchema)
+>>> # defaults are initialized automatically:
+>>> climate.settings.a
+'test'
+>>> climate.settings.c.d
+4
+>>> # Types are checked if given
+>>> climate.update({'c': {'d': 'boom!'}})
+Traceback (most recent call last):
+    ...
+pydantic.error_wrappers.ValidationError: 1 validation error for SettingsSchema
+c -> d
+    value is not a valid integer (type=type_error.integer)
 
                
 Integrations

@@ -277,12 +277,12 @@ class Climate:
                |-- .git/
                |-- base-climatecontrol-settings.json
                |-- climatecontrol_settings/
-                   |-- climatecontrol_settings.toml
-                   |-- climatecontrol_settings_2.yml
+                   |-- 01.toml
+                   |-- 02.yml
                    |-- 0/
-                       |-- climatecontrol_settings.yml
+                       |-- settings.yml
                    |-- 1/
-                       |-- climatecontrol_settings.json
+                       |-- settings.json
                |-- myproject/
                    |-- climatecontrol.general.settings.yaml
                    |-- mysubproject/
@@ -292,31 +292,32 @@ class Climate:
 
         ::
             myuser/myrepo/base-climatecontrol-settings.json
-            myuser/myrepo/climatecontrol_settings/climatecontrol_settings.toml
-            myuser/myrepo/climatecontrol_settings/climatecontrol_settings_2.yml
-            myuser/myrepo/climatecontrol_settings/0/climatecontrol_settings.yml
-            myuser/myrepo/climatecontrol_settings/1/climatecontrol_settings.json
+            myuser/myrepo/climatecontrol_settings/01.toml
+            myuser/myrepo/climatecontrol_settings/02.yml
+            myuser/myrepo/climatecontrol_settings/0/settings.yml
+            myuser/myrepo/climatecontrol_settings/1/settings.json
             myuser/myproject/climatecontrol.general.settings.yaml
             myuser/mysubproject/.climatecontrol.settings.yaml
 
         """
         prefix = self.env_parser.prefix.strip(self.env_parser.split_char).lower()
         base_pattern = f"*{prefix}*settings"
-        glob_patterns: List[str] = []
-        for loader in FileLoader.registered_loaders:
-            for ext in loader.valid_file_extensions:
-                glob_patterns.append(f"{base_pattern}{ext}")
+        extensions = [
+            ext
+            for loader in FileLoader.registered_loaders
+            for ext in loader.valid_file_extensions
+        ]
 
-        def find_settings_files(path: Path, recursive=False):
+        def find_settings_files(path: Path, glob_pattern: str, recursive=False):
             glob = path.rglob if recursive else path.glob
-            return sorted(
-                filepath
-                for pattern in glob_patterns
-                for filepath in glob(pattern)
-                if filepath.is_file()
-            )
+            filepaths = []
+            for ext in extensions:
+                for filepath in glob(f"{glob_pattern}{ext}"):
+                    if filepath.is_file():
+                        filepaths.append(filepath)
+            return sorted(filepaths)
 
-        current_path: Path = Path(".")
+        # Find all directories between current directory and project root
         search_directories: List[Path] = []
         project_root_candidates = [
             ".git",
@@ -327,22 +328,30 @@ class Climate:
             "environment.yaml",
             "pyproject.toml",
         ]
-        while current_path.is_dir():
+        current_path: Path = Path(".")
+        while True:
             search_directories.append(current_path)
-            if any(
-                (current_path / candidate).exists()
-                for candidate in project_root_candidates
+            new_current_path = current_path / ".."
+            if (
+                any(
+                    (current_path / candidate).exists()
+                    for candidate in project_root_candidates
+                )
+                or not new_current_path.is_dir()
+                or new_current_path.resolve() == current_path.resolve()
             ):
                 break
-            current_path = current_path / ".."
+            current_path = new_current_path
 
+        # Iterate over all directories and find files
         filepaths: List[Path] = []
         for directory in reversed(search_directories):
-            filepaths.extend(find_settings_files(directory))
+            filepaths.extend(find_settings_files(directory, base_pattern))
             for sub_dir in directory.glob(base_pattern):
                 if not sub_dir.is_dir():
                     continue
-                filepaths.extend(find_settings_files(sub_dir, recursive=True))
+                # Use all files with valid file extensions if already in settings directory.
+                filepaths.extend(find_settings_files(sub_dir, "*", recursive=True))
 
         return filepaths
 
@@ -464,8 +473,8 @@ class Climate:
         """
         logging_settings = DEFAULT_LOG_SETTINGS
         try:
-            logging_settings_update = self.settings[logging_section]
-        except (KeyError, TypeError):
+            logging_settings_update = getattr(self.settings, logging_section)
+        except (KeyError, TypeError, AttributeError):
             logging_settings_update = None
         if logging_settings_update:
             logging_settings = merge_nested(logging_settings, logging_settings_update)
