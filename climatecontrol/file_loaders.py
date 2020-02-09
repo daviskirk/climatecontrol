@@ -81,7 +81,6 @@ class FileLoader(ABC):
 
     format_name: str = ""
     valid_file_extensions: Tuple[str, ...] = ()
-    valid_content_start: Tuple = ()
     registered_loaders: List["FileLoader"] = []
 
     @classmethod
@@ -93,13 +92,6 @@ class FileLoader(ABC):
     @abstractmethod
     def from_content(cls, content: str) -> Any:
         """Load serialized data from content."""
-
-    @classmethod
-    def is_content(cls, path_or_content):
-        """Check if argument is file content."""
-        return any(
-            path_or_content.lstrip().startswith(s) for s in cls.valid_content_start
-        )
 
     @classmethod
     def is_path(cls, path_or_content: str):
@@ -125,7 +117,6 @@ class JsonLoader(FileLoader):
 
     format_name = "json"
     valid_file_extensions = (".json",)
-    valid_content_start = ("{",)
 
     @classmethod
     def from_content(cls, content: str) -> Any:
@@ -150,7 +141,6 @@ class YamlLoader(FileLoader):
 
     format_name = "yaml"
     valid_file_extensions = (".yml", ".yaml")
-    valid_content_start = ("---",)
 
     @classmethod
     def from_content(cls, content: str) -> Any:
@@ -179,7 +169,6 @@ class TomlLoader(FileLoader):
 
     format_name = "toml"
     valid_file_extensions = (".toml", ".ini", ".config", ".conf", ".cfg")
-    valid_content_start = ("[",)  # TODO: This only works if settings file has sections.
 
     @classmethod
     def from_content(cls, content: str) -> Any:
