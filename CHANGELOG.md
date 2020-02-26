@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.8.0] - 2019-02-27
 
 ### Added
 
@@ -35,7 +35,7 @@
 
 ### Removed
 
-- Remove python 3.5 support 
+- Remove python 3.5 support
 
 
 ## [0.7.3] - 2019-01-17
