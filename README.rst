@@ -142,7 +142,7 @@ or in toml form:
 In the following documentation examples, yaml files will be used, but any
 examples will work using the other file syntaxes as well.
 
-See the :meth:`climatecontrol.core.Climate.inferred_settings_files` docstring
+See the `climatecontrol.core.Climate.inferred_settings_files` docstring
 for further examples of how settings files are loaded and how they can be named.
 Also note that you can set your own settings files explicitely either by
 settings an environment variable:
@@ -339,7 +339,7 @@ pydantic.error_wrappers.ValidationError: 1 validation error for SettingsSchema
 c -> d
     value is not a valid integer (type=type_error.integer)
 
-               
+
 Integrations
 ------------
 
@@ -383,7 +383,7 @@ Logging
 If you have a "logging" section in your settings files, you can configure
 python standard library logging using that section directly:
 
-.. code:: yml
+.. code:: yaml
 
    logging:
      formatters:
@@ -397,7 +397,7 @@ python standard library logging using that section directly:
 
    import logging
    from climatecontrol import climate
-         
+
    climate.setup_logging()
    logging.debug('test')
    # outputs: DEBUG > test
@@ -425,7 +425,7 @@ temporarily:
    # After the context exits the settings map
    print(climate['a'])  # outputs: 1
 
-               
+
 Contributing
 ============
 
