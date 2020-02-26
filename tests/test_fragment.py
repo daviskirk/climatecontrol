@@ -34,6 +34,7 @@ def test_fragment_path():
         (["a"], {"a": "test"}),
         (["a", "stuff", 1, "bla"], {"a": {"stuff": [EMPTY, {"bla": "test"}]}}),
         ([2, "a"], [EMPTY, EMPTY, {"a": "test"}]),
+        ([2, 1], [EMPTY, EMPTY, [EMPTY, "test"]]),
     ],
 )
 def test_fragment_path_expand(path, expected):

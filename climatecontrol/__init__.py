@@ -6,8 +6,16 @@ namespaced environment variables.
 :licence: MIT, see LICENSE file for more details.
 
 """
-
+from .core import Climate
 from .exceptions import SettingsLoadError, SettingsValidationError
-from .settings_parser import Settings
 
-__all__ = ["Settings", "SettingsValidationError", "SettingsLoadError"]
+climate = Climate()
+Settings = Climate  # for backwards compatibility
+
+__all__ = [
+    "climate",
+    "Climate",
+    "Settings",
+    "SettingsValidationError",
+    "SettingsLoadError",
+]

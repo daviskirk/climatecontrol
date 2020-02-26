@@ -33,7 +33,7 @@ class EnvParser:
         settings_file_suffix: Suffix to identify an environment variable as a
             settings file.
 
-            >>> env_parser=EnvParser(prefix='A', split_char='_', setting_file_suffix='SF')
+            >>> env_parser=EnvParser(prefix='A', settings_file_suffix='SF')
             >>> env_parser.settings_file_env_var
             'A_SF'
 
@@ -45,16 +45,18 @@ class EnvParser:
             Is constructed automatically.
 
     Examples:
-        >>> env_parser = EnvParser(prefix='THIS_EXAMPLE', implicit_depth=1)
+        >>> os.chdir(getfixture('tmpdir'))  # noqa  # only for test: don't clobber current directory
         >>>
-        >>> with os.open('settings.toml', 'w') as f:
-        ...     f.write('[testgroup]\nother_var = 345')
-        >>> os.environ['THIS_EXAMPLE_TESTGROUP_TESTVAR'] = 27
+        >>> env_parser = EnvParser(prefix='THIS_EXAMPLE')
+        >>>
+        >>> _ = open('settings.toml', 'w').write('[testgroup]\nother_var = 345')
+        >>>
+        >>> os.environ['THIS_EXAMPLE_TESTGROUP_TESTVAR'] = '27'
         >>> os.environ['THIS_EXAMPLE_SETTINGS_FILE'] = './settings.toml'
         >>>
-        >>> result_dict = env_parser.parse()
-        >>> result_dict
-        {'testgroup': {'testvar': 27, 'othervar': 345}}
+        >>> fragments = list(env_parser.iter_load())
+        >>> fragments
+        [Fragment(value={'testgroup': {'other_var': 345}}, source='ENV:THIS_EXAMPLE_SETTINGS_FILE:./settings.toml', path=FragmentPath([])), Fragment(value=27, source='ENV:THIS_EXAMPLE_TESTGROUP_TESTVAR', path=FragmentPath(['testgroup_testvar']))]
 
     """
 
@@ -124,54 +126,31 @@ class EnvParser:
             raise ValueError("``split_char`` must be a single character")
         self._split_char = str(char)
 
-    def iter_load(
-        self, include_vars=True, include_file: bool = True
-    ) -> Iterator[Fragment]:
-        """Convert environment variables to nested dict.
+    def iter_load(self) -> Iterator[Fragment]:
+        """Convert environment variables to fragments.
 
         Note that all string inputs are case insensitive and all resulting keys
         are lower case.
 
-        Args:
-            include_file: If set to ``True`` also parses the settings file if found.
-
-        Returns:
-            nested dictionary
-
-        Examples:
-            Use implicit_depth to ensure that split chars are used up to a certain depth.
-
-            >>> os.environ['THIS_EXAMPLE_TESTGROUP_TESTVAR'] = 27
-            >>> env_parser = EnvParser(prefix='THIS_EXAMPLE')
-            >>> result_dict = env_parser.parse()
-            >>> result_dict
-            {'testgroup_testvar': 27}
-            >>> env_parser = EnvParser(prefix='THIS_EXAMPLE', implicit_depth=1)
-            >>> os.environ['THIS_EXAMPLE_TESTGROUP_TESTVAR'] = 27
-            >>> result_dict = env_parser.parse()
-            >>> result_dict
-            {'testgroup': {'testvar': 27}}
+        Yields:
+            Fragment representing a single environment variable value.
 
         """
-        if include_file:
-            settings_file_str = os.getenv(self.settings_file_env_var, "")
-            settings_files = [s.strip() for s in settings_file_str.split(",")]
-            for settings_file in settings_files:
-                for fragment in file_loaders.iter_load(settings_file):
-                    fragment.source = (
-                        "ENV:" + str(self.settings_file_env_var) + ":" + fragment.source
-                    )
-                    yield fragment
-        if include_vars:
-            for env_var, env_var_value in os.environ.items():
-                nested_keys = list(self._iter_nested_keys(env_var))
-                if not nested_keys:
-                    continue
-                value = parse_as_json_if_possible(env_var_value)
-                fragment = Fragment(
-                    value=value, path=nested_keys, source="ENV:" + env_var
+        settings_file_str = os.getenv(self.settings_file_env_var, "")
+        settings_files = [s.strip() for s in settings_file_str.split(",")]
+        for settings_file in settings_files:
+            for fragment in file_loaders.iter_load(settings_file):
+                fragment.source = (
+                    "ENV:" + str(self.settings_file_env_var) + ":" + fragment.source
                 )
                 yield fragment
+        for env_var, env_var_value in os.environ.items():
+            nested_keys = list(self._iter_nested_keys(env_var))
+            if not nested_keys:
+                continue
+            value = parse_as_json_if_possible(env_var_value)
+            fragment = Fragment(value=value, path=nested_keys, source="ENV:" + env_var)
+            yield fragment
 
     def _build_env_var(self, *parts: str) -> str:
         return self.split_char.join(self._strip_split_char(p).upper() for p in parts)

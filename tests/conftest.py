@@ -1,13 +1,35 @@
 """Test settings."""
+
 import itertools
 import json
 import os
 from collections import OrderedDict
+from copy import deepcopy
+from pathlib import Path
 from textwrap import dedent
 
 import pytest
 import toml
 import yaml
+
+
+@pytest.fixture(autouse=True)
+def recover_directory(tmpdir):
+    original_dir = Path(".").resolve()
+    yield
+    os.chdir(original_dir)
+
+
+@pytest.fixture(scope="session")
+def original_os_environ():
+    return deepcopy(os.environ)
+
+
+@pytest.fixture(autouse=True)
+def reset_os_environ(original_os_environ):
+    yield
+    os.environ.clear()
+    os.environ.update(original_os_environ)
 
 
 @pytest.fixture
@@ -178,4 +200,4 @@ def mock_env_settings_file(mock_os_environ, mock_settings_file):
 @pytest.fixture
 def mock_env_parser(mocker):
     """Mock out environment variable parser."""
-    return mocker.patch("climatecontrol.settings_parser.EnvParser")
+    return mocker.patch("climatecontrol.core.EnvParser")

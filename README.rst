@@ -39,16 +39,15 @@ Set some environment variables in your shell
 
 .. code:: sh
 
-   export MY_APP_VALUE1=test1
-   export MY_APP_VALUE2=test2
+   export CLIMATECONTROL_VALUE1=test1
+   export CLIMATECONTROL_VALUE2=test2
 
 Then use them in your python modules:
 
 .. code:: python
 
-   from climatecontrol.settings_parser import Settings
-   settings_map = Settings(prefix='MY_APP')
-   print(dict(settings_map))
+   from climatecontrol import climate
+   print(climate.settings)
 
    {
        'value1': 'test1',
@@ -62,9 +61,9 @@ settings:
 .. code:: python
 
    import os
-   os.environ['MY_APP_VALUE3'] = 'new_env_data'
-   settings_map.update()
-   print(dict(settings_map))
+   os.environ['CLIMATECONTROL_VALUE3'] = 'new_env_data'
+   climate.reload()
+   print(climate.settings)
 
    {
        'value1': 'test1',
@@ -78,15 +77,15 @@ settings. For this situation we can delimit sections using a double underscore:
 
 .. code:: sh
 
-   export MY_APP_SECTION1__VALUE1=test1
-   export MY_APP_SECTION2__VALUE2=test2
-   export MY_APP_SECTION2__VALUE3=test3
-   export MY_APP_SECTION2__SUB_SECTION__VALUE4=test4
+   export CLIMATECONTROL_SECTION1__VALUE1=test1
+   export CLIMATECONTROL_SECTION2__VALUE2=test2
+   export CLIMATECONTROL_SECTION2__VALUE3=test3
+   export CLIMATECONTROL_SECTION2__SUB_SECTION__VALUE4=test4
 
 .. code:: python
 
-   settings_map = Settings(prefix='MY_APP')
-   print(dict(settings_map))
+   from climatecontrol import climate
+   print(climate.settings)
 
    {
        'section1': {
@@ -111,13 +110,14 @@ Settings files can be yaml files (`.yml`/ `.yaml`), json files (`.json`) or toml
 
 .. code-block:: sh
 
-   export MY_APP_SETTINGS_FILE=./my_settings_file.yml
+   export CLIMATECONTROL_SETTINGS_FILE=./my_settings_file.yml
 
 
 The file could look like this:
 
 .. code-block:: yaml
 
+   # ./climatecontrol_settings.yaml
    section1:
      subsection1 = test1
 
@@ -130,10 +130,7 @@ or in toml form:
 
 .. code-block:: sh
 
-   export MY_APP_SETTINGS_FILE=./my_settings_file.toml
-
-.. code-block:: sh
-
+   # ./climatecontrol_settings.toml
    [section1]
    subsection1 = "test1"
 
@@ -144,6 +141,21 @@ or in toml form:
 
 In the following documentation examples, yaml files will be used, but any
 examples will work using the other file syntaxes as well.
+
+See the :meth:`climatecontrol.core.Climate.inferred_settings_files` docstring
+for further examples of how settings files are loaded and how they can be named.
+Also note that you can set your own settings files explicitely either by
+settings an environment variable:
+
+.. code-block:: sh
+
+   export CLIMATECONTROL_SETTINGS_FILE="mysettings.yaml, mysettings.toml, override.yml"
+
+or by adding them in code:
+
+.. code-block:: python
+
+   climate.settings_files.extend(["mysettings.yaml", "mysettings.toml", "override.yml"]
 
 
 Advanced Features
@@ -171,7 +183,7 @@ or using an environment variable:
 
 .. code-block:: sh
 
-   export MY_APP_SECTION1_SUBSECTION1_FROM_FILE="/home/myuser/supersecret.txt"
+   export CLIMATECONTROL_SECTION1_SUBSECTION1_FROM_FILE="/home/myuser/supersecret.txt"
 
 will both write the content of the file at `"/home/myuser/supersecret.txt"`
 into the variable `section1 -> subsection1`.
@@ -199,9 +211,27 @@ or using an environment variable:
 
 .. code-block:: sh
 
-   export MY_APP_SECTION1_SUBSECTION1_FROM_FILE="/home/myuser/supersecret.txt"
+   export CLIMATECONTROL_SECTION1_SUBSECTION1_FROM_FILE="/home/myuser/supersecret.txt"
 
 will both write "some value" into the variable `section1 -> subsection1`.
+
+Settings variables from serialized content
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: yaml
+
+   section1_from_json_content: '{"subsection1": "test", "subsection2": 2}'
+   section2_from_toml_content: 'subsection1 = "test"\nsubsection2 = 2\n'
+   section3_from_yaml_content: 'subsection1: test\nsubsection2: 2\n'
+
+
+The equivilant environment variables are also handled correctly:
+
+.. code-block:: sh
+
+   CLIMATECONTROL_SECTION1_FROM_JSON_CONTENT='{"subsection1": "test", "subsection2": 2}'
+   CLIMATECONTROL_SECTION2_FROM_TOML_CONTENT='subsection1 = "test"\nsubsection2 = 2\n'
+   CLIMATECONTROL_SECTION3_FROM_YAML_CONTENT='subsection1: test\nsubsection2: 2\n'
 
 
 Nested settings files
@@ -240,6 +270,76 @@ which would result in a settings structure:
    }
 
 
+Extensions
+----------
+
+While the default `climate` object is great for most uses, perhaps you already
+have a settings object style that you like or use a specific library for
+validation.  In these cases, CLIMATECONTROL can be extended to use these
+libraries.
+
+Dataclasses
+^^^^^^^^^^^
+
+>>> from climatecontrol.ext.dataclasses import Climate
+>>> from dataclasses import dataclass, field
+>>>
+>>> @dataclass
+... class SettingsSubSchema:
+...     d: int = 4
+...
+>>> @dataclass
+... class SettingsSchema:
+...     a: str = 'test'
+...     b: bool = False
+...     c: SettingsSubSchema = field(default_factory=SettingsSubSchema)
+...
+>>> climate = Climate(dataclass_cls=SettingsSchema)
+>>> # defaults are initialized automatically:
+>>> climate.settings.a
+'test'
+>>> climate.settings.c.d
+4
+>>> # Types are checked if given
+>>> climate.update({'c': {'d': 'boom!'}})
+Traceback (most recent call last):
+    ...
+dacite.exceptions.WrongTypeError: wrong type for field "c.d" - should be "int" instead of "str"
+
+
+Pydantic
+^^^^^^^^
+
+Pydantic is a great data validation library:
+https://github.com/samuelcolvin/pydantic and climatecontrol also provides a
+simple extension to use pydantic models directly (typing functionality mentioned
+above works here as well).
+
+>>> from climatecontrol.ext.pydantic import Climate
+>>>
+>>> class SettingsSubSchema(BaseModel):
+...     d: int = 4
+...
+>>> class SettingsSchema(BaseModel):
+...     a: str = 'test'
+...     b: bool = False
+...     c: SettingsSubSchema = SettingsSubSchema()
+...
+>>> climate = Climate(model=SettingsSchema)
+>>> # defaults are initialized automatically:
+>>> climate.settings.a
+'test'
+>>> climate.settings.c.d
+4
+>>> # Types are checked if given
+>>> climate.update({'c': {'d': 'boom!'}})
+Traceback (most recent call last):
+    ...
+pydantic.error_wrappers.ValidationError: 1 validation error for SettingsSchema
+c -> d
+    value is not a valid integer (type=type_error.integer)
+
+               
 Integrations
 ------------
 
@@ -255,9 +355,9 @@ Write your command line application like this:
    import click
 
    @click.command()
-   @settings_map.click_settings_file_option()
+   @climate.click_settings_file_option()
    def cli():
-      print(dict(settings_parser))
+      print(climate.settings)
 
 save it to a file like "cli.py" and then call it after installing click:
 
@@ -296,9 +396,9 @@ python standard library logging using that section directly:
 .. code:: python
 
    import logging
-
-   settings_map = Settings(prefix='MY_APP')
-   settings_map.setup_logging()
+   from climatecontrol import climate
+         
+   climate.setup_logging()
    logging.debug('test')
    # outputs: DEBUG > test
 
@@ -316,15 +416,16 @@ temporarily:
 
 .. code-block:: python
 
-   settings_map.update({'a': 1})
+   climate.update({'a': 1})
    # Enter a temporary changes context block:
-   with settings_map.temporary_changes():
-       settings_map.update({'a': 1})
+   with climate.temporary_changes():
+       climate.update({'a': 1})
        # Inside the context, the settings can be modified and used as you choose
-       print(settings_map['a'])  # outputs: 2
+       print(climate['a'])  # outputs: 2
    # After the context exits the settings map
-   print(settings_map['a'])  # outputs: 1
+   print(climate['a'])  # outputs: 1
 
+               
 Contributing
 ============
 

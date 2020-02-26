@@ -1,10 +1,12 @@
 """Utility functions."""
 
+import collections
 import json
 from copy import deepcopy
-from enum import Enum
 from itertools import zip_longest
 from typing import Any, Mapping, Sequence, Union
+
+from climatecontrol.constants import EMPTY
 
 
 def get_nested(obj: Union[Mapping, Sequence], path: Sequence) -> Any:
@@ -26,7 +28,7 @@ def get_nested(obj: Union[Mapping, Sequence], path: Sequence) -> Any:
         try:
             result = result[subpath]
         except (KeyError, IndexError, TypeError) as e:
-            raise type(e)(str(e.args[0]) + "at nested path: {}".format(traversed))
+            raise type(e)(str(e.args[0]) + " at nested path: {}".format(traversed))
     return result
 
 
@@ -44,13 +46,13 @@ def merge_nested(d: Any, u: Any) -> Any:
     """
     if isinstance(d, Mapping):
         new_dict: dict = dict(**d)
-        if not isinstance(u, Mapping):
+        if not isinstance(u, collections.abc.Mapping):
             return deepcopy(u)
         for k, u_v in u.items():
             new_dict[k] = merge_nested(d.get(k), u_v)
         return new_dict
-    elif isinstance(d, Sequence) and not isinstance(d, str):
-        if not isinstance(u, Sequence) or isinstance(u, str):
+    elif isinstance(d, collections.abc.Sequence) and not isinstance(d, str):
+        if not isinstance(u, collections.abc.Sequence) or isinstance(u, str):
             return deepcopy(u)
         new_list = [
             merge_nested(d_item, u_item) if u_item is not EMPTY else d_item
@@ -78,15 +80,3 @@ def int_if_digit(s: str):
     except AttributeError:
         pass
     return s
-
-
-class _Empty(Enum):
-    """Object representing an empty item."""
-
-    EMPTY = None
-
-    def __repr__(self):
-        return "<EMPTY>"  # pragma: nocover
-
-
-EMPTY = _Empty.EMPTY
