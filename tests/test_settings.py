@@ -25,14 +25,9 @@ def test_settings_empty(mock_empty_os_environ):
     assert len(climate.settings) == 0  # length of settings map
 
 
-@pytest.mark.parametrize("update_on_init", [False, True, None])
-def test_settings(mock_os_environ, update_on_init):
+def test_settings(mock_os_environ):
     """Check that initializing settings works correctly."""
     kwargs = {"prefix": "TEST_STUFF"}
-    if update_on_init is None:
-        pass
-    else:
-        kwargs["update_on_init"] = update_on_init
     climate = core.Climate(**kwargs)
     assert isinstance(climate.settings, Mapping)
     expected = {"testgroup": {"testvar": 7, "test_var": 6}, "testgroup_test_var": 9}
@@ -84,6 +79,80 @@ def test_parse_from_file_vars(original, file_exists, mock_os_environ, tmpdir):
     assert actual == expected
 
 
+def test_parse_from_file_root_var(mock_os_environ, tmpdir):
+    """Check that the "from_file" extension works as expected when loading from root.
+
+    Loading a key named "_from_file" should load the variables onto the same
+    level as the "_from_file".
+    """
+    climate = core.Climate()
+    filepath = tmpdir.join("testfile.yaml")
+    filename = str(filepath)
+    with open(filename, "w") as f:
+        f.write("b: 1\n" "c: 2\n")
+    update_dict = {
+        "a": "old",
+        "b": "old",
+        "_from_file": filename,
+        "d": "old",
+    }
+    climate.update(update_dict)
+    assert isinstance(climate.settings, Mapping)
+    actual = dict(climate.settings)
+    expected = {"a": "old", "b": 1, "c": 2, "d": "old"}
+    assert actual == expected
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        ("__testdir__/testfile1.yaml", {"b": 1, "c": 2}),
+        (["wrong.yaml", "__testdir__/testfile1.yaml", "wrong.yaml"], {"b": 1, "c": 2},),
+        (
+            [
+                "wrong.yaml",
+                "__testdir__/testfile1.yaml",
+                "__testdir__/testfile2.yaml",
+                "wrong.yaml",
+            ],
+            {"b": 1, "c": 3},
+        ),
+        ("__testdir__/*", {"b": 1, "c": 3}),
+        ([], {}),
+        ("__testdir__/wrong.yaml", {}),
+    ],
+)
+def test_parse_from_files_root_var(mock_os_environ, tmpdir, value, expected):
+    """Check that the "from_file" extension works as expected when loading from root.
+
+    Loading a key named "_from_file" should load the variables onto the same
+    level as the "_from_file".
+    """
+    climate = core.Climate()
+
+    filepath = tmpdir.join("testfile1.yaml")
+    with open(str(filepath), "w") as f:
+        f.write("b: 1\n" "c: 2\n")
+
+    filepath = tmpdir.join("testfile2.yaml")
+    with open(str(filepath), "w") as f:
+        f.write("c: 3\n")
+
+    if isinstance(value, list):
+        value = [item.replace("__testdir__", str(tmpdir)) for item in value]
+    else:
+        value = value.replace("__testdir__", str(tmpdir))
+
+    update_dict = {
+        "_from_file": value,
+    }
+
+    climate.update(update_dict)
+    assert isinstance(climate.settings, Mapping)
+    actual = dict(climate.settings)
+    assert actual == expected
+
+
 @pytest.mark.parametrize(
     "settings_update, var_content, expected",
     [
@@ -103,7 +172,7 @@ def test_parse_from_file_vars(original, file_exists, mock_os_environ, tmpdir):
 )
 def test_parse_from_env_vars(mock_os_environ, settings_update, var_content, expected):
     """Test replacing environment variables in settings."""
-    climate = core.Climate(update_on_init=False)
+    climate = core.Climate()
     os.environ["MY_VAR"] = var_content
     climate.update(settings_update)
     actual = dict(climate.settings)
@@ -329,7 +398,7 @@ def test_parse_from_file_list(ending, content, mock_os_environ, tmpdir):
     expected.
 
     """
-    climate = core.Climate(update_on_init=False)
+    climate = core.Climate()
     filepath = tmpdir.join("testvarfile" + ending)
     filename = str(filepath)
     with open(filename, "w") as f:
@@ -595,9 +664,9 @@ def test_cli_utils(
         assert result.exit_code == 2
         expected_output = (
             "Usage: tmp-cli [OPTIONS]\n"
-            'Try "tmp-cli --help" for help.\n\n'
-            'Error: Invalid value for "--{}" / "-{}": '
-            'File "badlfkjasfkj" does not exist.'
+            "Try 'tmp-cli --help' for help.\n\n"
+            "Error: Invalid value for '--{}' / '-{}': "
+            "File 'badlfkjasfkj' does not exist."
             "\n"
         ).format(option_name, option_name[0])
         assert result.output == expected_output

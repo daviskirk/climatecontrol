@@ -56,8 +56,8 @@ class Climate(BaseClimate, Generic[T]):
             >>> # Types are checked if given
             >>> climate.update({'c': {'d': 'boom!'}})
             Traceback (most recent call last):
-               ...
-            dacite.exceptions.WrongTypeError: wrong type for field "c.d" - should be "int" instead of "str"
+                ...
+            dacite.exceptions.WrongTypeError: wrong value type for field "c.d" - should be "int" instead of value "boom!" of type "str"
 
         See Also:
             :module:`dacite`: Used to initialize and check dataclasses.

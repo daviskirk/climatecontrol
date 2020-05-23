@@ -2,7 +2,6 @@
 
 import logging
 import os
-import warnings
 from typing import Iterable, Iterator, NamedTuple, Tuple
 
 from . import file_loaders
@@ -23,13 +22,6 @@ class EnvParser:
         split_char: Character to split variables at. Note that if prefix
             is given, the variable name must also be seperated from the base
             with this character.
-        implicit_depth: Maximumum depth of implicitely nested environment
-            variables to consider. If set, the first `implicit_depth`
-            occurrences of a single `split_char` character will be considered
-            nested settings boundaries. Note that if a file is given, the
-            maximum depth does not apply as the definition is clear.
-            **WARNING:** This feature is deprecated as of version 0.8 and will be
-            removed in a future version.
         settings_file_suffix: Suffix to identify an environment variable as a
             settings file.
 
@@ -64,18 +56,11 @@ class EnvParser:
         self,
         prefix: str = "CLIMATECONTROL",
         split_char: str = "_",
-        implicit_depth: int = 0,
         settings_file_suffix: str = "SETTINGS_FILE",
         exclude: Iterable[str] = (),
     ) -> None:
         """Initialize object."""
         self.settings_file_suffix = str(settings_file_suffix)
-        self.implicit_depth = int(implicit_depth)
-        if implicit_depth != 0:
-            warnings.warn(
-                'Setting "implicit_depth" is deprecated and will be removed in a future version',
-                DeprecationWarning,
-            )
         self.split_char = split_char
         self.prefix = prefix
         self.exclude = exclude  # type: ignore
@@ -170,11 +155,7 @@ class EnvParser:
         body = env_var_low[len(self.prefix) :]
         sections = body.split(self.split_char * 2)
         for i_section, section in enumerate(sections):
-            if self.implicit_depth > 0 and i_section == 0:
-                for s in section.split(self.split_char, self.implicit_depth):
-                    if s:
-                        yield int_if_digit(s)
-            elif section:
+            if section:
                 yield int_if_digit(section)
 
     def _strip_split_char(self, s):

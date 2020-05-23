@@ -10,12 +10,10 @@ from .core import Climate
 from .exceptions import SettingsLoadError, SettingsValidationError
 
 climate = Climate()
-Settings = Climate  # for backwards compatibility
 
 __all__ = [
     "climate",
     "Climate",
-    "Settings",
     "SettingsValidationError",
     "SettingsLoadError",
 ]

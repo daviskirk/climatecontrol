@@ -1,6 +1,5 @@
 """Climate parser."""
 import logging
-import warnings
 from contextlib import contextmanager
 from copy import deepcopy
 from itertools import chain
@@ -157,14 +156,10 @@ class Climate:
             result of the settings. The function should take a single
             nested dictionary argument (the settings map) as an argument
             and output a nested dictionary.
-        update_on_init: (Deprecated) If set to `False` no parsing is performed upon
-            initialization of the object. You will need to call update
-            manually if you want load use any settings.
 
     Args:
         settings_files: See attribute
         parser: See attribute
-        update_on_init: (Deprecated) If set to ``True``, read all configurations upon initialization.
         **env_parser_kwargs: Arguments passed to :class:`EnvParser` constructor.
 
     Example:
@@ -197,7 +192,6 @@ class Climate:
         self,
         settings_files: Sequence[str] = (),
         parser: Optional[Callable[[Mapping], Mapping]] = None,
-        update_on_init: Optional[bool] = None,
         **env_parser_kwargs,
     ) -> None:
         """Initialize settings object."""
@@ -208,14 +202,9 @@ class Climate:
         self._fragments = []
         self._initialized = False
         # We use an object proxy here so that the referene to the object is always the same.
-        # Note that instead of assigning _data directly, we reinitialize it using _data.__init__(new_obj).
+        # Note that instead of assigning _data directly, we reinitialize it using self._set_data(new_obj).
         self._data = ObjectProxy(None)
         self._combined_fragment = Fragment(None)
-
-        if update_on_init is not None:
-            warnings.warn("setting update_on_init is deprecated", DeprecationWarning)
-        if update_on_init:
-            self.reload()
 
     def __repr__(self) -> str:
         return self.__class__.__qualname__ + "[\n{}\n]".format(pformat(self._data))
@@ -516,7 +505,7 @@ class Climate:
         yield self
 
         # reinstate all saved data after context block is finished
-        self._data.__init__(archived_data)
+        self._set_data(archived_data)
         for k, v in archived_settings.items():
             setattr(self, k, v)
 
@@ -526,9 +515,12 @@ class Climate:
         """Set all relevant state fields related to loading of settings on object."""
         self._fragments = fragments
         self._combined_fragment = combined
-        self._data.__init__(parsed)
+        self._set_data(parsed)
         self._updates = updates
         self._initialized = True
+
+    def _set_data(self, value: Any) -> None:
+        self._data.__init__(value)
 
     def _stateless_reload(self, updates: list) -> Tuple[List[Fragment], Fragment, Any]:
         """Calculate result of reload but do not use any object state.

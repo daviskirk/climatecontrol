@@ -269,6 +269,24 @@ which would result in a settings structure:
        }
    }
 
+You can also expand the settings at the root of the document by using only
+"_from_file" as the key:
+
+.. code-block:: yaml
+
+   value1: "spam"
+   _from_file: /home/myuser/nestedfile.yaml
+
+.. code-block:: python
+
+   {
+       "value1": "spam",
+       "value2": "cheese",
+       "subsection": {
+           "value3": "parrot"
+       }
+   }
+
 
 Extensions
 ----------
