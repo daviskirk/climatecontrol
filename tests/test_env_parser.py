@@ -35,34 +35,11 @@ def test_envparser_assign(mock_empty_os_environ, attr, value, expected):
 
 
 @pytest.mark.parametrize(
-    "prefix, implicit_depth, split_char, expected_kws",
+    "prefix, split_char, expected_kws",
     [
+        ("TEST_STUFF", "-", []),
         (
             "TEST_STUFF",
-            1,
-            "_",
-            [
-                dict(
-                    value=6,
-                    source="ENV:TEST_STUFF_TESTGROUP__TEST_VAR",
-                    path=["testgroup", "test_var"],
-                ),
-                dict(
-                    value=7,
-                    source="ENV:TEST_STUFF_TESTGROUP__TESTVAR",
-                    path=["testgroup", "testvar"],
-                ),
-                dict(
-                    value=9,
-                    source="ENV:TEST_STUFF_TESTGROUP_TEST_VAR",
-                    path=["testgroup", "test_var"],
-                ),
-            ],
-        ),
-        ("TEST_STUFF", 1, "-", []),
-        (
-            "TEST_STUFF",
-            0,
             "_",
             [
                 dict(
@@ -82,38 +59,12 @@ def test_envparser_assign(mock_empty_os_environ, attr, value, expected):
                 ),
             ],
         ),
-        (
-            "TEST_STUFF_",
-            1,
-            "_",
-            [
-                dict(
-                    value=6,
-                    source="ENV:TEST_STUFF_TESTGROUP__TEST_VAR",
-                    path=["testgroup", "test_var"],
-                ),
-                dict(
-                    value=7,
-                    source="ENV:TEST_STUFF_TESTGROUP__TESTVAR",
-                    path=["testgroup", "testvar"],
-                ),
-                dict(
-                    value=9,
-                    source="ENV:TEST_STUFF_TESTGROUP_TEST_VAR",
-                    path=["testgroup", "test_var"],
-                ),
-            ],
-        ),
-        ("TEST_STUFFING", 1, "_", []),
+        ("TEST_STUFFING", "_", []),
     ],
 )
-def test_envparser_args_iter_load(
-    mock_os_environ, prefix, implicit_depth, split_char, expected_kws
-):
+def test_envparser_args_iter_load(mock_os_environ, prefix, split_char, expected_kws):
     """Check that we can parse settings from variables."""
-    env_parser = EnvParser(
-        prefix=prefix, split_char=split_char, implicit_depth=implicit_depth
-    )
+    env_parser = EnvParser(prefix=prefix, split_char=split_char)
     expected = [Fragment(**kw) for kw in expected_kws]
     results = list(env_parser.iter_load())
     assert results == expected

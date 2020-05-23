@@ -1,5 +1,14 @@
 # Changelog
 
+### Added
+
+- A "_from_file" key at the root of a file loads the file into the root configuration
+
+### Removed
+
+- Remove deprecated `climatecontrol.Settings` (use `climatecontrol.Climate` instead)
+- Remove deprecated options `implicit_depth` and `update_on_init`.
+
 ## [0.8.0] - 2019-02-27
 
 ### Added
