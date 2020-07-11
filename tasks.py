@@ -9,7 +9,7 @@ from invoke import Collection, Task, task
 def format(c):
     """Format the code to make it compatible with the `check` command."""
     print("> sorting imports]")
-    c.run("isort -rc -y")
+    c.run("isort .")
 
     print("> [painting all the code black]")
     c.run("black .")
@@ -29,7 +29,7 @@ def check(c):
     """Check the code is ok by running flake8, black, isort and mypy."""
     print("> check that code is formatted well")
     c.run("black --check .")
-    c.run("isort --check-only -rc")
+    c.run("isort --check-only .")
     print("> lint with flake8")
     c.run("flake8")
     print("> typecheck")

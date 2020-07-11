@@ -1,8 +1,8 @@
 """Logging utilities."""
 
 import logging
-import logging.config as logging_config
 import time
+from logging import config as logging_config
 from typing import Any
 
 formatter: Any = logging.Formatter

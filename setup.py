@@ -51,7 +51,8 @@ setup(
     ],
     setup_requires=["pytest-runner", "setuptools_scm"],
     extras_require={
-        "dev": ["invoke", "black", "mypy", "isort", "flake8"] + test_requirements,
+        "dev": ["invoke", "black", "mypy", "isort>=5.0.9", "flake8"]
+        + test_requirements,
         "dataclasses": dataclasses_requirements,
     },
     tests_require=test_requirements,
