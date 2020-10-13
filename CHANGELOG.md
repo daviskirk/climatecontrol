@@ -1,5 +1,7 @@
 # Changelog
 
+## [0.9.0] - 2020-10-13
+
 ### Added
 
 - A "_from_file" key at the root of a file loads the file into the root configuration
