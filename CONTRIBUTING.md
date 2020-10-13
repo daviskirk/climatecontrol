@@ -1,4 +1,4 @@
-Contributions are always welcome!  
+Contributions are always welcome!
 
 Writing new issues
 ------------------
@@ -7,8 +7,8 @@ If you are using climatecontrol and find a
 bug, please write an issue including such things as:
 
 * climatecontrol version (run `pip show climatecontrol` and look for the version)
-* Python version 
-* Current operating system + version (Linux / Windows / Mac) 
+* Python version
+* Current operating system + version (Linux / Windows / Mac)
 
 Development
 -----------

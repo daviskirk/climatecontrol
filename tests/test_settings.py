@@ -107,7 +107,10 @@ def test_parse_from_file_root_var(mock_os_environ, tmpdir):
     "value, expected",
     [
         ("__testdir__/testfile1.yaml", {"b": 1, "c": 2}),
-        (["wrong.yaml", "__testdir__/testfile1.yaml", "wrong.yaml"], {"b": 1, "c": 2},),
+        (
+            ["wrong.yaml", "__testdir__/testfile1.yaml", "wrong.yaml"],
+            {"b": 1, "c": 2},
+        ),
         (
             [
                 "wrong.yaml",

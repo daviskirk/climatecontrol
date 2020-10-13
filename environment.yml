@@ -1,15 +1,7 @@
 name: climatecontrol
 dependencies:
-  - python=3.7
+  - python=3.8
   - pip=19
-  - pyyaml
-  - click
-  - pytest
-  - pytest-mock
-  - pytest-cov
-  - toml
-  - flake8
-  - mypy
   - ipython
   - pip:
     - pdbpp
