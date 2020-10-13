@@ -1,6 +1,7 @@
 """Utility functions."""
 
 import collections
+import collections.abc
 import json
 from copy import deepcopy
 from itertools import zip_longest
