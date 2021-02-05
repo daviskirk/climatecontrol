@@ -27,8 +27,7 @@ def test_settings_empty(mock_empty_os_environ):
 
 def test_settings(mock_os_environ):
     """Check that initializing settings works correctly."""
-    kwargs = {"prefix": "TEST_STUFF"}
-    climate = core.Climate(**kwargs)
+    climate = core.Climate(prefix="TEST_STUFF")
     assert isinstance(climate.settings, Mapping)
     expected = {"testgroup": {"testvar": 7, "test_var": 6}, "testgroup_test_var": 9}
     assert dict(climate.settings) == expected

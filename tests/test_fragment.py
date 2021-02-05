@@ -84,9 +84,9 @@ def test_fragment_clone():
     fragment = Fragment("bla")
     assert fragment.clone() == fragment
     assert fragment.clone() is not fragment
-    cloned = fragment.clone(source=["a"])
+    cloned = fragment.clone(source="foobar")
     assert cloned != fragment
-    assert cloned == Fragment("bla", source=["a"])
+    assert cloned == Fragment("bla", source="foobar")
 
 
 def test_fragment_iter_leaves():
