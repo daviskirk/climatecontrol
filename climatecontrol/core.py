@@ -192,12 +192,12 @@ class Climate:
         self,
         settings_files: Sequence[str] = (),
         parser: Optional[Callable[[Mapping], Mapping]] = None,
-        **env_parser_kwargs,
+        **env_parser_kwargs: Any,
     ) -> None:
         """Initialize settings object."""
         self.env_parser = EnvParser(**(env_parser_kwargs or {}))
         self.parser = parser
-        self.settings_files = settings_files
+        self.settings_files = settings_files  # type: ignore
         self._updates = []
         self._fragments = []
         self._initialized = False
@@ -231,7 +231,7 @@ class Climate:
         self._parse = value
 
     @property
-    def settings_files(self) -> Sequence:
+    def settings_files(self) -> List[str]:
         """Return current settings files."""
         return self._settings_files
 
@@ -587,8 +587,8 @@ class Climate:
         return combined_fragment
 
     def _iter_load_files(self) -> Iterator[Fragment]:
-        for entry in self.inferred_settings_files:
-            yield from iter_load(entry)
+        for inferred_entry in self.inferred_settings_files:
+            yield from iter_load(inferred_entry)
 
         for entry in self.settings_files:
             yield from iter_load(entry)
