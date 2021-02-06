@@ -1,4 +1,4 @@
-|Build Status| |Coverage Status| |PyPi Status| |PyPI license| |PyPI pyversions|
+|Build Status| |Coverage Status| |PyPi version| |PyPI license| |PyPI pyversions|
 |Code Style Black|
 
 
@@ -450,17 +450,17 @@ Contributing
 See: `CONTRIBUTING.md <./CONTRIBUTING.md>`__
 
 
-.. |Build Status| image:: https://travis-ci.org/daviskirk/climatecontrol.svg?branch=master
-   :target: https://travis-ci.org/daviskirk/climatecontrol
-.. |Coverage Status| image:: https://coveralls.io/repos/github/daviskirk/climatecontrol/badge.svg?branch=master
-   :target: https://coveralls.io/github/daviskirk/climatecontrol?branch=master
-.. |PyPi Status| image:: https://badge.fury.io/py/climatecontrol.svg
-   :target: https://badge.fury.io/py/climatecontrol
-.. |PyPI license| image:: https://img.shields.io/pypi/l/ansicolortags.svg
-   :target: https://pypi.python.org/pypi/ansicolortags/
-.. |PyPI pyversions| image:: https://img.shields.io/pypi/pyversions/climatecontrol.svg
+.. |Build Status| image:: https://img.shields.io/github/workflow/status/daviskirk/climatecontrol/ci?style=flat-square
+   :target: https://github.com/daviskirk/climatecontrol
+.. |Coverage Status| image:: https://img.shields.io/codecov/c/github/daviskirk/climatecontrol/master?style=flat-square
+   :target: https://codecov.io/gh/daviskirk/climatecontrol
+.. |PyPI version| image:: https://img.shields.io/pypi/v/climatecontrol?style=flat-square
    :target: https://pypi.python.org/pypi/climatecontrol/
-.. |Code Style Black| image:: https://img.shields.io/badge/code%20style-black-000000.svg
+.. |PyPI license| image:: https://img.shields.io/pypi/l/climatecontrol?style=flat-square
+   :target: https://pypi.python.org/pypi/climatecontrol/
+.. |PyPI pyversions| image:: https://img.shields.io/pypi/pyversions/climatecontrol?style=flat-square
+   :target: https://pypi.python.org/pypi/climatecontrol/
+.. |Code Style Black| image:: https://img.shields.io/badge/code%20style-black-000000.svg?style=flat-square
    :target: https://github.com/psf/black
 .. _click: http://click.pocoo.org/
 .. _toml: https://github.com/toml-lang/toml
