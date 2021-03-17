@@ -1,4 +1,4 @@
-|Build Status| |Coverage Status| |PyPi version| |PyPI license| |PyPI pyversions|
+|Build Status| |Coverage Status| |PyPi version| |PyPI license| |PyPI pyversions| |Conda version|
 |Code Style Black|
 
 
@@ -460,6 +460,8 @@ See: `CONTRIBUTING.md <./CONTRIBUTING.md>`__
    :target: https://pypi.python.org/pypi/climatecontrol/
 .. |PyPI pyversions| image:: https://img.shields.io/pypi/pyversions/climatecontrol?style=flat-square
    :target: https://pypi.python.org/pypi/climatecontrol/
+.. |Conda version| image:: https://img.shields.io/conda/vn/conda-forge/climatecontrol?style=flat-square
+   :target: https://anaconda.org/conda-forge/climatecontrol
 .. |Code Style Black| image:: https://img.shields.io/badge/code%20style-black-000000.svg?style=flat-square
    :target: https://github.com/psf/black
 .. _click: http://click.pocoo.org/
