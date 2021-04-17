@@ -74,5 +74,5 @@ class Climate(BaseClimate, Generic[T]):
     def parse(self, data: Mapping) -> T:
         """Parse data into the provided dataclass."""
         data = super().parse(data)
-        obj: T = dacite.from_dict(self.dataclass_cls, data)
+        obj: T = dacite.from_dict(self.dataclass_cls, {k: v for k, v in data.items()})
         return obj
