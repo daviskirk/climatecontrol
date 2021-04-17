@@ -140,7 +140,7 @@ class SettingsItem(ObjectProxy):
 
     @classmethod
     def _self_is_mutable(cls, value: Any) -> bool:
-        return isinstance(value, MutableMapping) or isinstance(value, MutableSequence)
+        return isinstance(value, (MutableMapping, MutableSequence))
 
 
 class Climate:
@@ -177,6 +177,7 @@ class Climate:
 
     """
 
+    settings_files: List[Union[str, Path]]
     _combined_fragment: Fragment
     _updates: List
     _fragments: List[Fragment]
@@ -190,14 +191,17 @@ class Climate:
 
     def __init__(
         self,
-        settings_files: Sequence[str] = (),
+        settings_files: Union[str, Path, Sequence[Union[str, Path]]] = (),
         parser: Optional[Callable[[Mapping], Mapping]] = None,
         **env_parser_kwargs: Any,
     ) -> None:
         """Initialize settings object."""
         self.env_parser = EnvParser(**(env_parser_kwargs or {}))
         self.parser = parser
-        self.settings_files = settings_files  # type: ignore
+        if isinstance(settings_files, (str, Path)):
+            self.settings_files = [settings_files]
+        else:
+            self.settings_files = list(settings_files)
         self._updates = []
         self._fragments = []
         self._initialized = False
@@ -209,15 +213,6 @@ class Climate:
     def __repr__(self) -> str:
         return self.__class__.__qualname__ + "[\n{}\n]".format(pformat(self._data))
 
-    def __str__(self) -> str:
-        return self.__class__.__qualname__ + "[\n{}\n]".format(pformat(self._data))
-
-    @property
-    def settings(self) -> Any:
-        """Return a settings item proxy for easy access to settings hierarchy."""
-        self.ensure_initialized()
-        return SettingsItem(self._data, self, FragmentPath())
-
     @property
     def parser(self) -> Optional[Callable[[Mapping], Mapping]]:
         """Return settings parser function."""
@@ -226,22 +221,13 @@ class Climate:
     @parser.setter
     def parser(self, value: Optional[Callable[[Mapping], Mapping]]) -> None:
         """Set the settings parser function."""
-        if value and not callable(value):
-            raise TypeError("If given, ``parser`` must be a callable")
         self._parse = value
 
     @property
-    def settings_files(self) -> List[str]:
-        """Return current settings files."""
-        return self._settings_files
-
-    @settings_files.setter
-    def settings_files(self, files: Union[str, Iterable[str]]) -> None:
-        """Set settings files to use when parsing settings."""
-        files = files or ()
-        if isinstance(files, str):
-            files = (files,)
-        self._settings_files = list(files)
+    def settings(self) -> Any:
+        """Return a settings item proxy for easy access to settings hierarchy."""
+        self.ensure_initialized()
+        return SettingsItem(self._data, self, FragmentPath())
 
     @property
     def inferred_settings_files(self) -> List[Path]:
@@ -493,15 +479,15 @@ class Climate:
 
         """
         archived_data = deepcopy(self._data.__wrapped__)
-        archived_settings = {}
-        for k in [
-            "settings_files",
-            "_updates",
-            "_fragments",
-            "_combined_fragment",
-        ]:
-            archived_settings[k] = deepcopy(getattr(self, k))
-
+        archived_settings = {
+            k: deepcopy(getattr(self, k))
+            for k in [
+                "settings_files",
+                "_updates",
+                "_fragments",
+                "_combined_fragment",
+            ]
+        }
         yield self
 
         # reinstate all saved data after context block is finished

@@ -20,6 +20,7 @@ def test_settings_empty(mock_empty_os_environ):
     climate = core.Climate()
     assert isinstance(climate.settings, Mapping)
     assert dict(climate.settings) == {}
+    assert repr(climate)  # check that __repr__ works
     assert str(climate)  # check that __repr__ works
     assert str(climate.settings)  # check that __repr__ works
     assert len(climate.settings) == 0  # length of settings map
@@ -542,22 +543,6 @@ def mock_parser_fcn(s):
     """Return input instead of doing some complex parsing."""
 
 
-@pytest.mark.parametrize(
-    "attr, value, expected",
-    [
-        ("settings_files", "this.toml", ["this.toml"]),
-        ("settings_files", ("this.toml", "that.toml"), ["this.toml", "that.toml"]),
-        ("parser", mock_parser_fcn, mock_parser_fcn),
-    ],
-)
-def test_assign(mock_empty_os_environ, mock_env_parser, attr, value, expected):
-    """Test that assigning attributes on settings object works."""
-    s = core.Climate(prefix="this", settings_file_suffix="suffix", parser=None)
-    assert s.settings_files == []
-    setattr(s, attr, value)
-    assert getattr(s, attr) == expected
-
-
 @pytest.mark.parametrize("update", [False, True])
 @pytest.mark.parametrize("envvar", [False, True])
 @pytest.mark.parametrize("clear", [False, True])
@@ -752,7 +737,7 @@ def test_setup_logging(monkeypatch, update, mock_empty_os_environ):
 def test_update_log(caplog, mock_empty_os_environ, mock_settings_file):
     """Test writing out an example configuration file."""
     settings_file_path, expected = mock_settings_file
-    climate = core.Climate(prefix="TEST_STUFF", settings_files=settings_file_path)
+    climate = core.Climate(prefix="TEST_STUFF", settings_files=(settings_file_path,))
     assert climate.update_log == "", "before updating, the update log should be empty"
     climate.update({"a": core.REMOVED, "b": 2})
     lines = climate.update_log.split("\n")

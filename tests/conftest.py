@@ -195,9 +195,3 @@ def mock_env_settings_file(mock_os_environ, mock_settings_file):
     """Set the settings file env variable to a temporary settings file."""
     os.environ["TEST_STUFF_SETTINGS_FILE"] = mock_settings_file[0]
     return mock_settings_file
-
-
-@pytest.fixture
-def mock_env_parser(mocker):
-    """Mock out environment variable parser."""
-    return mocker.patch("climatecontrol.core.EnvParser")
