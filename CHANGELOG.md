@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.10.0] - 2020-04-17
+
+### Changed
+
+- Allow `settings_files` to contain `pathlib.Path` objects as well as strings.
+
+### Removed
+
+- Assigning strings to `settings_files` will no longer coerce strings into lists.
+
 ## [0.9.0] - 2020-10-13
 
 ### Added
