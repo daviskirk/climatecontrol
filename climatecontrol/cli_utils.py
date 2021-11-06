@@ -48,7 +48,7 @@ def click_settings_file_option(
     option_kwargs = dict(
         help="Settings file path for loading settings from file.",
         callback=validate,
-        type=click.Path(exists=True, dir_okay=False, resolve_path=True),
+        type=click_obj.Path(exists=True, dir_okay=False, resolve_path=True),
         expose_value=False,
         is_eager=True,
         multiple=True,
