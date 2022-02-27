@@ -196,7 +196,7 @@ def test_settings_files_fail(mock_empty_os_environ, settings_files):
     "file_str, filename, mock_module",
     [
         ("---\na: 5", "test.yaml", "climatecontrol.file_loaders.yaml"),
-        ("[section]\na = 5", "test.toml", "climatecontrol.file_loaders.toml"),
+        ("[section]\na = 5", "test.toml", "climatecontrol.file_loaders.tomli"),
     ],
 )
 def test_file_loader_module_import_fail(
@@ -615,7 +615,7 @@ def test_temporary_changes():
 
 @pytest.mark.parametrize("use_method", [True, False])
 @pytest.mark.parametrize("option_name", ["config", "settings"])
-@pytest.mark.parametrize("mode", ["config", "noconfig", "wrongfile", "noclick"])
+@pytest.mark.parametrize("mode", ["config", "noconfig", "wrongfile"])
 def test_cli_utils(
     mock_empty_os_environ, mock_settings_file, mode, option_name, use_method
 ):
@@ -645,7 +645,7 @@ def test_cli_utils(
         result = runner.invoke(tmp_cli, args)
         assert dict(climate.settings) == {}
         assert result.exit_code == 0
-    elif "wrongfile":
+    elif mode == "wrongfile":
         args = ["--" + option_name, "badlfkjasfkj"]
         result = runner.invoke(tmp_cli, args)
         assert result.exit_code == 2
@@ -657,6 +657,8 @@ def test_cli_utils(
             "\n"
         ).format(option_name, option_name[0])
         assert result.output == expected_output
+    else:  # pragma: nocover
+        assert False, "Incorrect mode"
 
 
 def test_settings_items(mock_empty_os_environ):
