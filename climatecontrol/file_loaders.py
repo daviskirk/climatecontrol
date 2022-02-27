@@ -11,9 +11,9 @@ from .exceptions import NoCompatibleLoaderFoundError
 from .fragment import Fragment
 
 try:
-    import toml
+    import tomli
 except ImportError:  # pragma: nocover
-    toml = None  # type: ignore
+    tomli = None  # type: ignore
 try:
     import yaml
 except ImportError:  # pragma: nocover
@@ -174,18 +174,18 @@ class TomlLoader(FileLoader):
     def from_content(cls, content: str) -> Any:
         """Load toml from string."""
         cls._check_toml()
-        return toml.loads(content)
+        return tomli.loads(content)
 
     @classmethod
     def from_path(cls, path: str):
         """Load toml from file at path."""
         cls._check_toml()
-        with open(path) as f:
-            return toml.load(f)
+        with open(path, "rb") as f:
+            return tomli.load(f)
 
     @staticmethod
     def _check_toml():
-        if toml is None:
+        if tomli is None:
             raise ImportError(
                 '"toml" package needs to be installed to parse toml files.'
             )

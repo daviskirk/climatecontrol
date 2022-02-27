@@ -9,7 +9,7 @@ from pathlib import Path
 from textwrap import dedent
 
 import pytest
-import toml
+import tomli_w
 import yaml
 
 
@@ -70,10 +70,10 @@ def file_extension(request, monkeypatch):
         if ext == ".toml":
             monkeypatch.setattr("climatecontrol.file_loaders.yaml", None)
         elif ext in {".yml", ".yaml"}:
-            monkeypatch.setattr("climatecontrol.file_loaders.toml", None)
+            monkeypatch.setattr("climatecontrol.file_loaders.tomli", None)
         else:
             monkeypatch.setattr("climatecontrol.file_loaders.yaml", None)
-            monkeypatch.setattr("climatecontrol.file_loaders.toml", None)
+            monkeypatch.setattr("climatecontrol.file_loaders.tomli", None)
     return ext
 
 
@@ -86,9 +86,9 @@ def mock_settings_file(request, monkeypatch, tmpdir, file_extension):
     expected_result = {"testgroup": {"testvar": 123}, "othergroup": {"blabla": 555}}
 
     if ext == ".toml":
-        p.write(toml.dumps(expected_result))
+        p.write(tomli_w.dumps(expected_result))
     elif ext in [".yml", ".yaml"]:
-        p.write("---\n" + yaml.dump(expected_result))
+        p.write("---\n" + yaml.safe_dump(expected_result))
     elif ext == ".json":
         p.write(json.dumps(expected_result))
     else:  # pragma: nocover

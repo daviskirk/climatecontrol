@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.11.0] - 2020-04-17
+
+### Added
+
+- Python 3.10 support (added to test suite)
+
+### Removed
+
+- Python 3.6 support
+
+### Changed
+
+- Use `tomli` instead of `toml` package in in preparation for
+  https://www.python.org/dev/peps/pep-0680/ (tomli is the basis for pythons
+  future builtin toml support)
+- Updated dependencies
+
+
 ## [0.10.0] - 2020-04-17
 
 ### Changed
