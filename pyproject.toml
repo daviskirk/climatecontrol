@@ -42,7 +42,7 @@ invoke = "^2.0"
 black = "^22.1.0"
 mypy = "^0.910"
 isort = ">=5.10.1"
-flake8 = "^4.0.1"
+flake8 = "^6.0"
 dacite = "^1.6.0"  # for extras
 pydantic = ">=1.9.0,<3.0"  # for extras
 types-PyYAML = "^6.0.4"
