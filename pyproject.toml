@@ -30,7 +30,7 @@ include = ["LICENSE", "README.rst", "setup.py", "climatecontrol/py.typed"]
 python = ">=3.7,<4.0"
 wrapt = "^1.12"
 dacite = { version = "^1.6", optional = true }
-pydantic = { version = "^1.7.4", optional = true }
+pydantic = { version = ">=1.7.4,<3.0", optional = true }
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.2"
@@ -45,7 +45,7 @@ mypy = "^0.910"
 isort = ">=5.10.1"
 flake8 = "^4.0.1"
 dacite = "^1.6.0"  # for extras
-pydantic = "^1.9.0"  # for extras
+pydantic = ">=1.9.0,<3.0"  # for extras
 types-PyYAML = "^6.0.4"
 tomli-w = "^1.0.0"
 

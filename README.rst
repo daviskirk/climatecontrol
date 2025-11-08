@@ -333,6 +333,8 @@ https://github.com/samuelcolvin/pydantic and climatecontrol also provides a
 simple extension to use pydantic models directly (typing functionality mentioned
 above works here as well).
 
+Supports both Pydantic v1 (>=1.7.4) and v2 (>=2.0).
+
 >>> from climatecontrol.ext.pydantic import Climate
 >>>
 >>> class SettingsSubSchema(BaseModel):
