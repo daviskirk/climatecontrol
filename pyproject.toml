@@ -5,14 +5,13 @@ description = "Python library for loading app configurations from files and/or n
 authors = [
     {name = "Davis Kirkendall", email = "davis.e.kirkendall@gmail.com"}
 ]
-license = {text = "MIT"}
+license = "MIT"
 readme = "README.rst"
 requires-python = ">=3.10,<4.0"
 keywords = ["climatecontrol", "configuration", "environment"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Natural Language :: English",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
@@ -56,16 +55,9 @@ Repository = "https://github.com/daviskirk/climatecontrol"
 Documentation = "https://github.com/daviskirk/climatecontrol"
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
 
-[tool.hatch.build.targets.wheel]
-packages = ["climatecontrol"]
-
-[tool.hatch.build.targets.sdist]
-include = [
-    "/climatecontrol",
-    "/LICENSE",
-    "/README.rst",
-    "/setup.py",
-]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["climatecontrol*"]
