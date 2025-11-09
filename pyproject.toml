@@ -40,7 +40,7 @@ PyYAML = "^6.0.1"
 click = ">=8.0"
 invoke = "^2.0"
 black = "^22.1.0"
-mypy = "^0.910"
+mypy = "^1.0"
 isort = ">=5.10.1"
 flake8 = "^6.0"
 dacite = "^1.6.0"  # for extras

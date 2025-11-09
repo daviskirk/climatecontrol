@@ -368,7 +368,9 @@ class Climate:
         self._set_state(parsed, combined, fragments, self._updates)
 
     def update(
-        self, update_data: Mapping = None, path: Union[str, int, Sequence] = None
+        self,
+        update_data: Optional[Mapping] = None,
+        path: Optional[Union[str, int, Sequence]] = None,
     ) -> None:
         """Update settings using a patch dictionary.
 

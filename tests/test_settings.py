@@ -676,7 +676,7 @@ def test_settings_items(mock_empty_os_environ):
         climate.update({"a": {"b": {"c": value}}})
         assert climate.settings.a.b.c == value
 
-    for value in [{"new": "data"}, "blaaa", 100]:
+    for value in [{"new": "data"}, "blaaa", 100]:  # type: ignore[assignment]
         with pytest.raises(TypeError):
             climate.settings.a.b.c[0] = value
         climate.update({"a": {"b": {"c": [value]}}})
