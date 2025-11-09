@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import dacite
 import pytest
@@ -29,7 +29,7 @@ def test_climate(mock_empty_os_environ):
 
     @dataclass
     class A:
-        c: C = C()
+        c: C = field(default_factory=C)
         a: int = 1
         b: str = "yeah"
 

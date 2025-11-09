@@ -1,4 +1,7 @@
-"""Climatecontrol extension for using pydantic schemas as source."""
+"""Climatecontrol extension for using pydantic schemas as source.
+
+Supports both Pydantic v1 (>=1.7.4) and v2 (>=2.0).
+"""
 
 from typing import Generic, Mapping, Type, TypeVar
 
@@ -32,6 +35,7 @@ class Climate(BaseClimate, Generic[T]):
         Examples:
 
             >>> from climatecontrol.ext.pydantic import Climate
+            >>> from pydantic import BaseModel, Field
             >>>
             >>> class SettingsSubSchema(BaseModel):
             ...     d: int = 4
@@ -39,7 +43,7 @@ class Climate(BaseClimate, Generic[T]):
             >>> class SettingsSchema(BaseModel):
             ...     a: str = 'test'
             ...     b: bool = False
-            ...     c: SettingsSubSchema = SettingsSubSchema()
+            ...     c: SettingsSubSchema = Field(default_factory=SettingsSubSchema)
             ...
             >>> climate = Climate(model=SettingsSchema)
             >>> # defaults are initialized automatically:
@@ -48,12 +52,15 @@ class Climate(BaseClimate, Generic[T]):
             >>> climate.settings.c.d
             4
             >>> # Types are checked if given
-            >>> climate.update({'c': {'d': 'boom!'}})
+            >>> climate.update({'c': {'d': 'boom!'}})  # doctest: +ELLIPSIS, +IGNORE_EXCEPTION_DETAIL
             Traceback (most recent call last):
                ...
-            pydantic.error_wrappers.ValidationError: 1 validation error for SettingsSchema
-            c -> d
-              value is not a valid integer (type=type_error.integer)
+            pydantic...ValidationError: 1 validation error...
+            ...
+
+        Note:
+            This extension supports both Pydantic v1 (>=1.7.4) and v2 (>=2.0).
+            The error messages and formats may vary between versions.
 
         See Also:
             :module:`pydantic`: Used to initialize and check settings.
