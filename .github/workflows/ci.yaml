@@ -21,26 +21,27 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install poetry
-      uses: abatilo/actions-poetry@v3.0.0
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
       with:
-        poetry-version: 1.8.3
+        version: "0.9.8"
+        enable-cache: true
     - name: Install dependencies
       run: |
-        poetry install
+        uv sync --all-extras
     - name: Install Pydantic ${{ matrix.pydantic-version }}
       run: |
         if [ "${{ matrix.pydantic-version }}" = "1" ]; then
-          poetry run pip install "pydantic>=1.9.0,<2.0"
+          uv pip install "pydantic>=1.9.0,<2.0"
         else
-          poetry run pip install "pydantic>=2.0,<3.0"
+          uv pip install "pydantic>=2.0,<3.0"
         fi
     - name: Run checks and lint code
       run: |
-        poetry run invoke check
+        uv run invoke check
     - name: Run tests
       run: |
-        poetry run invoke test
-        poetry run coverage xml
+        uv run invoke test
+        uv run coverage xml
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v1

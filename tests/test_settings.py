@@ -1,4 +1,5 @@
 """Test settings."""
+
 import json
 import os
 import sys
