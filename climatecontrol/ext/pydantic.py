@@ -35,6 +35,7 @@ class Climate(BaseClimate, Generic[T]):
         Examples:
 
             >>> from climatecontrol.ext.pydantic import Climate
+            >>> from pydantic import BaseModel, Field
             >>>
             >>> class SettingsSubSchema(BaseModel):
             ...     d: int = 4
@@ -42,7 +43,7 @@ class Climate(BaseClimate, Generic[T]):
             >>> class SettingsSchema(BaseModel):
             ...     a: str = 'test'
             ...     b: bool = False
-            ...     c: SettingsSubSchema = SettingsSubSchema()
+            ...     c: SettingsSubSchema = Field(default_factory=SettingsSubSchema)
             ...
             >>> climate = Climate(model=SettingsSchema)
             >>> # defaults are initialized automatically:
@@ -51,12 +52,12 @@ class Climate(BaseClimate, Generic[T]):
             >>> climate.settings.c.d
             4
             >>> # Types are checked if given
-            >>> climate.update({'c': {'d': 'boom!'}})
+            >>> climate.update({'c': {'d': 'boom!'}})  # doctest: +ELLIPSIS
             Traceback (most recent call last):
                ...
-            pydantic.ValidationError: 1 validation error for SettingsSchema
+            pydantic...ValidationError: 1 validation error for SettingsSchema
             c -> d
-              Input should be a valid integer...
+              ...
 
         Note:
             This extension supports both Pydantic v1 (>=1.7.4) and v2 (>=2.0).
