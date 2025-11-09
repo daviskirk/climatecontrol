@@ -52,12 +52,11 @@ class Climate(BaseClimate, Generic[T]):
             >>> climate.settings.c.d
             4
             >>> # Types are checked if given
-            >>> climate.update({'c': {'d': 'boom!'}})  # doctest: +ELLIPSIS
+            >>> climate.update({'c': {'d': 'boom!'}})  # doctest: +ELLIPSIS, +IGNORE_EXCEPTION_DETAIL
             Traceback (most recent call last):
                ...
-            pydantic...ValidationError: 1 validation error for SettingsSchema
-            c -> d
-              ...
+            pydantic...ValidationError: 1 validation error...
+            ...
 
         Note:
             This extension supports both Pydantic v1 (>=1.7.4) and v2 (>=2.0).

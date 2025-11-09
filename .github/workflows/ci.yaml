@@ -8,11 +8,12 @@ on:
 
 jobs:
   test:
-
+    name: test (py${{ matrix.python-version }}, pydantic${{ matrix.pydantic-version }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
+        pydantic-version: ["1", "2"]
 
     steps:
     - uses: actions/checkout@v2
@@ -27,6 +28,13 @@ jobs:
     - name: Install dependencies
       run: |
         poetry install
+    - name: Install Pydantic ${{ matrix.pydantic-version }}
+      run: |
+        if [ "${{ matrix.pydantic-version }}" = "1" ]; then
+          poetry run pip install "pydantic>=1.9.0,<2.0"
+        else
+          poetry run pip install "pydantic>=2.0,<3.0"
+        fi
     - name: Run checks and lint code
       run: |
         poetry run invoke check
