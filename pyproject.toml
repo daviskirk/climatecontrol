@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "climatecontrol"
-version = "0.11.0"
+version = "0.12.0"
 description = "Python library for loading app configurations from files and/or namespaced environment variables."
 authors = ["Davis Kirkendall <davis.e.kirkendall@gmail.com>"]
 license = "MIT"
