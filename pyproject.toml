@@ -1,6 +1,6 @@
 [project]
 name = "climatecontrol"
-version = "0.12.0"
+version = "0.13.0"
 description = "Python library for loading app configurations from files and/or namespaced environment variables."
 authors = [
     {name = "Davis Kirkendall", email = "davis.e.kirkendall@gmail.com"}
