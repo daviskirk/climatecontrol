@@ -1,4 +1,5 @@
 """Climate parser."""
+
 import logging
 from contextlib import contextmanager
 from copy import deepcopy

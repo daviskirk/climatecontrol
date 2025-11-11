@@ -1,6 +1,5 @@
 """Constants used in other modules."""
 
-
 from enum import Enum
 
 
